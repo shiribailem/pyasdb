@@ -172,6 +172,8 @@ class DB:
         for table in tableNames:
             self.tables[table] = Table(self, table)
 
+        atexit.register(self.close)
+
     def keys(self):
         """
         :return: List of all tables in the database
@@ -208,7 +210,6 @@ class DB:
             self.index += 1
             return x
 
-    @atexit.register
     def close(self):
         self.sync()
         self.shelf.close()
