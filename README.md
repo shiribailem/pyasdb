@@ -69,6 +69,7 @@ different types)
 - [x] Available on PyPi (pip install pyasdb)
 - [x] Add help() data
 - [ ] Add thread safety
+- [x] Update Routine that connects to dict.update
 
 ### PyDoc
 ```
@@ -148,6 +149,15 @@ CLASSES
      |      :param key(str): primary key of result
      |      :param key(int): list index of result
      |      :return:
+     |
+     |  def update(self, key, obj)
+     |      Applies partial updates without erasing data via the dict.update mechanism
+     |      :param key: primary key of entry
+     |      :param obj: dictionary containing new values to be merged with entry
+     |
+     |  def __delitem__(self, key)
+     |
+     |  def __contains__(self, key)
      |  
      |  query(self, field, func, checktype=None)
      |      Make a sub-query and return a new narrower Query object
@@ -190,6 +200,15 @@ CLASSES
      |      :param key: primary key of entry
      |      :param value: new contents
      |      :param sync: boolean specifying to immediately sync if in writeback mode
+     |
+     |  def update(self, key, obj)
+     |      Applies partial updates without erasing data via the dict.update mechanism
+     |      :param key: primary key of entry
+     |      :param obj: dictionary containing new values to be merged with entry
+     |
+     |  def __delitem__(self, key)
+     |
+     |  def __contains__(self, key)
      |  
      |  keys(self)
      |      Returns a list of primary keys in the Table
