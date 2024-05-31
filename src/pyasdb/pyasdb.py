@@ -143,7 +143,9 @@ class Table:
         :param key: primary key of entry
         :param obj: dictionary containing new values to be merged with entry
         """
-        self[key] = self[key].update(obj)
+        tmpx = self[key]
+        tmpx.update(obj)
+        self[key] = tmpx
 
     def __delitem__(self, key):
         del self.parent.shelf['.'.join((self.name, key))]
