@@ -7,7 +7,7 @@ The goal with PYASDB (I pronounce it Py-As-DB) is to be a barebones simple no-sq
 
 While I try to optimize it's performance, it's probably less efficient than sqlite as the size of the data increases.
 
-As a side benefit of it's simplicity: the only import (at the time of writing) is the internal library shelve.
+Additionally this is built using only internal libraries, meaning no dependencies should need to be installed.
 
 Disclaimer: Due to it's use of shelve which is backed further by pickle, this is not advisable to load untrusted
 databases.

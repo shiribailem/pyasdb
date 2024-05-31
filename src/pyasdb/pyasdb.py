@@ -1,5 +1,5 @@
 import shelve
-
+import atexit
 
 class Query:
     """
@@ -207,3 +207,8 @@ class DB:
             x = self[self.__keycache[self.index]]
             self.index += 1
             return x
+
+    @atexit.register
+    def close(self):
+        self.sync()
+        self.shelf.close()
