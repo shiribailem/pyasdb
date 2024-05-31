@@ -67,6 +67,8 @@ class Query:
         :param key(int): list index of result
         :return:
         """
+        if not isinstance(value, dict):
+            raise TypeError("Value must be a dictionary")
         if isinstance(key, int):
             self.table[self.results[key]] = value
         elif isinstance(key, str):
@@ -129,6 +131,8 @@ class Table:
         :param value: new contents
         :param sync: boolean specifying to immediately sync if in writeback mode
         """
+        if not isinstance(value, dict):
+            raise TypeError("Value must be a dictionary")
         self.parent.shelf['.'.join((self.name, key))] = value
         if sync:
             self.parent.sync()
