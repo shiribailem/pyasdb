@@ -68,3 +68,4 @@ exist)
 different types)
 - [ ] Convert to package (and upload to pip)
 - [ ] Add help() data
+- [ ] Add thread safety
