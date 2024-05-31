@@ -74,6 +74,15 @@ class Query:
         else:
             raise KeyError
 
+    def update(self, key, obj):
+        self.table.update(key, obj)
+
+    def __delitem__(self, key):
+        self.table.__delitem__(key)
+
+    def __contains__(self, key):
+        return key in self.results
+
     def __repr__(self):
         return "<pyasdb.DB.Table.Query: " + self.table.name + " - " + ','.join(self.results) + ">"
 
@@ -123,6 +132,20 @@ class Table:
         self.parent.shelf['.'.join((self.name, key))] = value
         if sync:
             self.parent.sync()
+
+    def update(self, key, obj):
+        """
+        Applies partial updates without erasing data via the dict.update mechanism
+        :param key: primary key of entry
+        :param obj: dictionary containing new values to be merged with entry
+        """
+        self[key] = self[key].update(obj)
+
+    def __delitem__(self, key):
+        del self.parent.shelf['.'.join((self.name, key))]
+
+    def __contains__(self, key):
+        return '.'.join((self.name, key)) in self.parent.shelf
 
     def __iter__(self):
         self.index = 0
