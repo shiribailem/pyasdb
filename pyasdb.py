@@ -15,17 +15,24 @@ class Query:
         self.table = table
         self.results = results
 
-    def query(self, field, func):
+    def query(self, field, func, checktype=None):
         """
         Make a sub-query and return a new narrower Query object
         :param field: the field being searched, will only parse entries that have this field
         :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
+        :param checktype: if passed a type will automatically narrow results to that type to prevent TypeError
         :return: A new query object containing the results of the given query
         """
         field = str(field)
         return Query(self.table, list(
             filter(
-                lambda key: field in self.table[key].keys() and func(self.table[key][field]), self.results)
+                lambda key:
+                    field in self.table[key].keys() and
+                    (
+                        checktype is None or
+                        isinstance(self.table[key], checktype)
+                    ) and
+                    func(self.table[key][field]), self.results)
             )
         )
 

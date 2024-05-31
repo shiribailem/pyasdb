@@ -61,7 +61,7 @@ query.query('z', lambda x: x < 10)
 - [x] Writeback Support
 - [ ] Convenience queries (ie. dedicated functions for =, <, >, != to cut down on repetitive lambdas)
 - [ ] SUM and similar
-- [ ] Query Type Checking
+- [x] Query Type Checking (to prevent TypeError if field has been assigned different types)
 - [ ] Subfield queries (your lambda can reference subfields, but the query function doesn't check to make sure they 
 exist)
 - [ ] Key type agnosticism (the key in the backend must be a string, but it can be handy to just str() all keys to allow
@@ -149,10 +149,11 @@ CLASSES
      |      :param key(int): list index of result
      |      :return:
      |  
-     |  query(self, field, func)
+     |  query(self, field, func, checktype=None)
      |      Make a sub-query and return a new narrower Query object
      |      :param field: the field being searched, will only parse entries that have this field
      |      :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
+     |      :param checktype: if passed a type will automatically narrow results to that type to prevent TypeError
      |      :return: A new query object containing the results of the given query
      |  
      |  ----------------------------------------------------------------------
