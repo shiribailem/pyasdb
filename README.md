@@ -69,3 +69,151 @@ different types)
 - [ ] Convert to package (and upload to pip)
 - [ ] Add help() data
 - [ ] Add thread safety
+
+### PyDoc
+```
+Python Library Documentation: module pyasdb
+
+NAME
+    pyasdb
+
+CLASSES
+    builtins.object
+        DB
+        Query
+        Table
+    
+    class DB(builtins.object)
+     |  DB(filename, flag='c', writeback=False)
+     |  
+     |  A simple offline local pythonic database backed by shelve/pickle
+     |  
+     |  Methods defined here:
+     |  
+     |  __getitem__(self, key)
+     |      Returns a Table, will create a new Table if one does not already exist.
+     |      :param key:
+     |      :return:
+     |  
+     |  __init__(self, filename, flag='c', writeback=False)
+     |      Database constructor
+     |      :param filename: Path and filename of the database file to use (will append .db to end)
+     |      :param flag: flag passed through to Shelve.open
+     |      :param writeback: Whether to enable writeback mode
+     |  
+     |  __iter__(self)
+     |  
+     |  __next__(self)
+     |  
+     |  keys(self)
+     |      :return: List of all tables in the database
+     |  
+     |  sync(self)
+     |      If writeback enabled, manually sync
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors defined here:
+     |  
+     |  __dict__
+     |      dictionary for instance variables (if defined)
+     |  
+     |  __weakref__
+     |      list of weak references to the object (if defined)
+    
+    class Query(builtins.object)
+     |  Query(table, results)
+     |  
+     |  Query Class For Making And Managing Results of Queries.
+     |  
+     |  Methods defined here:
+     |  
+     |  __getitem__(self, key)
+     |      :param key(str): primary key of result
+     |      :param key(int): list index of result
+     |      :return:
+     |  
+     |  __init__(self, table, results)
+     |      Query Constructor
+     |      :param table: Table object the results are for
+     |      :param results: list of keys
+     |  
+     |  __iter__(self)
+     |  
+     |  __next__(self)
+     |  
+     |  __repr__(self)
+     |      Return repr(self).
+     |  
+     |  __setitem__(self, key, value)
+     |      :param key(str): primary key of result
+     |      :param key(int): list index of result
+     |      :return:
+     |  
+     |  query(self, field, func)
+     |      Make a sub-query and return a new narrower Query object
+     |      :param field: the field being searched, will only parse entries that have this field
+     |      :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
+     |      :return: A new query object containing the results of the given query
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors defined here:
+     |  
+     |  __dict__
+     |      dictionary for instance variables (if defined)
+     |  
+     |  __weakref__
+     |      list of weak references to the object (if defined)
+    
+    class Table(builtins.object)
+     |  Table(parent, name)
+     |  
+     |  Table class for managing individual database tables
+     |  
+     |  Methods defined here:
+     |  
+     |  __getitem__(self, key)
+     |  
+     |  __init__(self, parent, name)
+     |      Table Constructor
+     |      :param parent: handle of the DB
+     |      :param name: name of the Table in the DB
+     |  
+     |  __iter__(self)
+     |  
+     |  __next__(self)
+     |  
+     |  __repr__(self)
+     |      Return repr(self).
+     |  
+     |  __setitem__(self, key, value, sync=False)
+     |      :param key: primary key of entry
+     |      :param value: new contents
+     |      :param sync: boolean specifying to immediately sync if in writeback mode
+     |  
+     |  keys(self)
+     |      Returns a list of primary keys in the Table
+     |      :return: list of keys
+     |  
+     |  query(self, field, func)
+     |      Generates an initial query and returns a Query object.
+     |      :param field: the field being searched, will only parse entries that have this field
+     |      :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
+     |      :return: A new Query object containing the results of the given query
+     |  
+     |  sync(self)
+     |      If writeback enabled on database, initiate a sync
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors defined here:
+     |  
+     |  __dict__
+     |      dictionary for instance variables (if defined)
+     |  
+     |  __weakref__
+     |      list of weak references to the object (if defined)
+
+FILE
+    /home/shiri/PycharmProjects/pyasdb/pyasdb.py
+
+
+```
