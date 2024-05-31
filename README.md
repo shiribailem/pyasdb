@@ -15,7 +15,7 @@ databases.
 ### Quickstart
 
 ```python
-from pyasdb import DB
+from src.pyasdb.pyasdb import DB
 
 # This will create a file 'test.db' in the local folder. 
 # The name is passed directly to shelve so accepts paths, but will always append '.db' at the end. 
@@ -66,8 +66,8 @@ query.query('z', lambda x: x < 10)
 exist)
 - [ ] Key type agnosticism (the key in the backend must be a string, but it can be handy to just str() all keys to allow
 different types)
-- [ ] Convert to package (and upload to pip)
-- [ ] Add help() data
+- [x] Available on PyPi (pip install pyasdb)
+- [x] Add help() data
 - [ ] Add thread safety
 
 ### PyDoc

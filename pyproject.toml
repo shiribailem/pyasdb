@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyasdb"
+version = "2024.05.31.1"
+authors = [
+  { name="Shiri Bailem", email="shiri@bailem.me" },
+]
+description = "A simplified NoSQL offline database built on top of shelve/pickle"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["database", "offline", "NoSQL"]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Topic :: Database",
+]
+
+[project.urls]
+Homepage = "https://github.com/shiribailem/pyasdb"
+Issues = "https://github.com/shiribailem/pyasdb/issues"
