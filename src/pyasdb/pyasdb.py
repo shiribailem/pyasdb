@@ -1,5 +1,6 @@
 import shelve
 import atexit
+from threading import Lock
 
 class Query:
     """
@@ -123,7 +124,8 @@ class Table:
         self.parent.sync()
 
     def __getitem__(self, key):
-        return self.parent.shelf['.'.join((self.name, key))]
+        with self.parent.lock:
+            return self.parent.shelf['.'.join((self.name, key))]
 
     def __setitem__(self, key, value, sync=False):
         """
@@ -194,6 +196,7 @@ class DB:
         """
         self.shelf = shelve.open(filename, flag, writeback=writeback)
         self.writeback = writeback
+        self.lock = Lock()
 
         tableNames = list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
         self.tables = {}
@@ -213,8 +216,9 @@ class DB:
         """
         If writeback enabled, manually sync
         """
-        if self.writeback:
-            self.shelf.sync()
+        with self.lock:
+            if self.writeback:
+                self.shelf.sync()
 
     def __getitem__(self, key):
         """
