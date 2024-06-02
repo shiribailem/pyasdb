@@ -124,8 +124,7 @@ class Table:
         self.parent.sync()
 
     def __getitem__(self, key):
-        with self.parent.lock:
-            return self.parent.shelf['.'.join((self.name, key))]
+        return self.parent.shelf['.'.join((self.name, key))]
 
     def __setitem__(self, key, value, sync=False):
         """
@@ -135,9 +134,10 @@ class Table:
         """
         if not isinstance(value, dict):
             raise TypeError("Value must be a dictionary")
-        self.parent.shelf['.'.join((self.name, key))] = value
-        if sync:
-            self.parent.sync()
+        with self.parent.lock:
+            self.parent.shelf['.'.join((self.name, key))] = value
+            if sync:
+                self.parent.sync()
 
     def update(self, key, obj):
         """
