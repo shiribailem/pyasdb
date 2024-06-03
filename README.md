@@ -68,7 +68,7 @@ exist)
 different types)
 - [x] Available on PyPi (pip install pyasdb)
 - [x] Add help() data
-- [ ] Add thread safety
+- [x] Add thread safety (automatically includes locks to secure writes)
 - [x] Update Routine that connects to dict.update
 
 ### PyDoc
