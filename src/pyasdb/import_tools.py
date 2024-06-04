@@ -23,7 +23,7 @@ def csv_import(file, table, index, autoconvert=True):
                 else:
                     try:
                         row[key] = literal_eval(row[key])
-                    except ValueError:
+                    except (ValueError, SyntaxError):
                         if dateutil:
                             try:
                                 row[key] = dateutil.parser.parse(row[key])
