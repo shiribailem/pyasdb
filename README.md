@@ -70,6 +70,8 @@ different types)
 - [x] Add help() data
 - [x] Add thread safety (automatically includes locks to secure writes)
 - [x] Update Routine that connects to dict.update
+- [x] pyasdb.import_tools contains tools for automatically importing and converting raw data (CSV only at the time of 
+  writing)
 
 ### PyDoc
 ```
