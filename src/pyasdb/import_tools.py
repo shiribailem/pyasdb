@@ -1,5 +1,5 @@
 try:
-    import dateutil
+    import dateutil.parser
 except ImportError:
     dateutil = None
 
@@ -27,8 +27,9 @@ def csv_import(file, table, index, autoconvert=True):
                         if dateutil:
                             try:
                                 row[key] = dateutil.parser.parse(row[key])
-                            except dateutil.parser.ParserError:
+                            except:
                                 pass
+
             for key in removekeys:
                 row.pop(key)
 
