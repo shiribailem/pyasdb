@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyasdb"
-version = "2024.06.04.3"
+version = "2024.06.07.1"
 authors = [
   { name="Shiri Bailem", email="shiri@bailem.me" },
 ]

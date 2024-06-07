@@ -1,6 +1,7 @@
 import shelve
 import atexit
 from threading import Lock
+from dbm import dumb as dumbdbm
 
 class Query:
     """
@@ -187,14 +188,22 @@ class DB:
     """
     A simple offline local pythonic database backed by shelve/pickle
     """
-    def __init__(self, filename, flag='c', writeback=False):
+    def __init__(self, filename=None, flag='c', writeback=False, backend=None):
         """
         Database constructor
-        :param filename: Path and filename of the database file to use (will append .db to end)
+        :param filename: Path and filename of the database file to use (ignored if backend provided)
         :param flag: flag passed through to Shelve.open
         :param writeback: Whether to enable writeback mode
+        :param backend: (alternative) Accepts open DBM handler (overrides all other arguments)
         """
-        self.shelf = shelve.open(filename, flag, writeback=writeback)
+
+        if backend is None:
+            self.dbm = dumbdbm.open(filename, flag)
+        else:
+            self.dbm = backend
+
+        self.shelf = shelve.Shelf(backend)
+
         self.writeback = writeback
         self.lock = Lock()
 

@@ -72,6 +72,9 @@ different types)
 - [x] Update Routine that connects to dict.update
 - [x] pyasdb.import_tools contains tools for automatically importing and converting raw data (CSV only at the time of 
   writing)
+- [x] added support for forcing a different dbm backend to shelve, defaults to dumbdbm now for stability reasons
+  (this will also help avoid issues if anyone installs a different natively supported dbm after opening the database as
+  shelves' default behavior automatically picks a db and could change when a new one is available)
 
 ### PyDoc
 ```
