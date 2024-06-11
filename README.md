@@ -116,6 +116,12 @@ CLASSES
      |  
      |  sync(self)
      |      If writeback enabled, manually sync
+     |
+     |  backup(self, filename=None, flag='n', backend=None)
+     |      Creates a backup of the current database
+     |      :param filename: Path and filename of the database file to use (ignored if backend provided)
+     |      :param flag: flag passed through to Shelve.open
+     |      :param backend: (alternative) Accepts open DBM handler (overrides all other arguments)
      |  
      |  ----------------------------------------------------------------------
      |  Data descriptors defined here:
