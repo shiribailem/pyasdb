@@ -122,6 +122,7 @@ CLASSES
      |      :param filename: Path and filename of the database file to use (ignored if backend provided)
      |      :param flag: flag passed through to Shelve.open
      |      :param backend: (alternative) Accepts open DBM handler (overrides all other arguments)
+     |      :writeback: Defaults to True to help protect against corruption in mid-copy
      |  
      |  ----------------------------------------------------------------------
      |  Data descriptors defined here:

@@ -230,20 +230,19 @@ class DB:
             if self.writeback:
                 self.shelf.sync()
 
-    def backup(self, filename=None, flag='n', backend=None):
+    def backup(self, filename=None, flag='n', backend=None, writeback=True):
         """
         Creates a backup of the current database
         :param filename: Path and filename of the database file to use (ignored if backend provided)
         :param flag: flag passed through to Shelve.open
         :param backend: (alternative) Accepts open DBM handler (overrides all other arguments)
+        :writeback: Defaults to True to help protect against corruption in mid-copy
         """
 
         if backend is None:
             backend = dumbdbm.open(filename, flag)
-        else:
-            backend = backend
 
-        backupshelf = shelve.Shelf(backend)
+        backupshelf = shelve.Shelf(backend, writeback=writeback)
 
         for key in self.shelf.keys():
             backupshelf[key] = self.shelf[key]
