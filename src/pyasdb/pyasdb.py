@@ -126,7 +126,12 @@ class Table:
         self.parent.sync()
 
     def __getitem__(self, key):
-        return self.parent.shelf['.'.join((self.name, key))]
+        # Replace Key Errors With Blank Values
+        comp_key = '.'.join((self.name, str(key)))
+        if comp_key not in self.parent.shelf:
+            return {}
+        else:
+            return self.parent.shelf['.'.join((self.name, key))]
 
     def __setitem__(self, key, value, sync=False):
         """
