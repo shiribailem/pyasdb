@@ -62,7 +62,7 @@ class Query:
         elif isinstance(key, str):
             return self.table[key]
         else:
-            raise KeyError
+            return self.table[str(key)]
 
     def __setitem__(self, key, value):
         """
@@ -77,15 +77,18 @@ class Query:
         elif isinstance(key, str):
             self.table[key] = value
         else:
-            raise KeyError
+            return self.table[str(key)]
 
     def update(self, key, obj):
+        key = str(key)
         self.table.update(key, obj)
 
     def __delitem__(self, key):
+        key = str(key)
         self.table.__delitem__(key)
 
     def __contains__(self, key):
+        key = str(key)
         return key in self.results
 
     def __repr__(self):
@@ -139,6 +142,7 @@ class Table:
         :param value: new contents
         :param sync: boolean specifying to immediately sync if in writeback mode
         """
+        key = str(key)
         if not isinstance(value, dict):
             raise TypeError("Value must be a dictionary")
         with self.parent.lock:
@@ -152,14 +156,17 @@ class Table:
         :param key: primary key of entry
         :param obj: dictionary containing new values to be merged with entry
         """
+        key = str(key)
         tmpx = self[key]
         tmpx.update(obj)
         self[key] = tmpx
 
     def __delitem__(self, key):
+        key = str(key)
         del self.parent.shelf['.'.join((self.name, key))]
 
     def __contains__(self, key):
+        key = str(key)
         return '.'.join((self.name, key)) in self.parent.shelf
 
     def __iter__(self):
@@ -262,6 +269,7 @@ class DB:
         :param key:
         :return:
         """
+        key = str(key)
         if not key in self.tables.keys():
             self.tables[key] = Table(self, key)
         return self.tables[key]
