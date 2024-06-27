@@ -256,8 +256,15 @@ class DB:
 
         backupshelf = shelve.Shelf(backend, writeback=writeback)
 
+        keylist = []
+
         for key in self.shelf.keys():
             backupshelf[key] = self.shelf[key]
+            keylist.append(key)
+
+        for key in backupshelf.keys():
+            if not key in keylist:
+                del backupshelf[key]
 
         backupshelf.sync()
         backupshelf.close()
