@@ -215,7 +215,7 @@ class DB:
         else:
             self.dbm = backend
 
-        self.shelf = shelve.Shelf(backend)
+        self.shelf = shelve.Shelf(backend, writeback=writeback)
 
         self.writeback = writeback
         self.lock = Lock()
