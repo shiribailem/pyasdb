@@ -207,7 +207,7 @@ class DB:
         :param filename: Path and filename of the database file to use (ignored if backend provided)
         :param flag: flag passed through to Shelve.open
         :param writeback: Whether to enable writeback mode
-        :param backend: (alternative) Accepts open DBM handler (overrides all other arguments)
+        :param backend: (alternative) Accepts open DBM handler or dict object (overrides all other arguments)
         """
 
         if backend is None:
