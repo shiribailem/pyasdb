@@ -21,14 +21,20 @@ def csv_import(file, table, index, autoconvert=True):
                 if row[key] == '' or row[key] is None:
                     removekeys.append(key)
                 else:
-                    try:
-                        row[key] = literal_eval(row[key])
-                    except (ValueError, SyntaxError):
-                        if dateutil:
+                    if row[key].isdigit():
+                        row[key] = int(row[key])
+                    else:
+                        try:
+                            row[key] = float(row[key])
+                        except ValueError:
                             try:
-                                row[key] = dateutil.parser.parse(row[key])
-                            except:
-                                pass
+                                row[key] = literal_eval(row[key])
+                            except (ValueError, SyntaxError):
+                                if dateutil:
+                                    try:
+                                        row[key] = dateutil.parser.parse(row[key])
+                                    except:
+                                        pass
 
             for key in removekeys:
                 row.pop(key)
