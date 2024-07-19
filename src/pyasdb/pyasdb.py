@@ -297,3 +297,4 @@ class DB:
     def close(self):
         self.sync()
         self.shelf.close()
+        self.dbm.close()
