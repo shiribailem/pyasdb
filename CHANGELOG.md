@@ -1,4 +1,4 @@
-### Current
+### 2024.07.22.1
 * (BREAKING) Changed the shelf backend from the default auto-select to dumbdbm (increases 
   portability and makes behavior more predictable. Fix by either selecting the appropriate dbm
   or converting the files manually to dumbdbm)
@@ -15,7 +15,7 @@
 
 ### 2024.06.04
 * (FIX) don't crash if dateutil is missing, making it an optional dependency
-* (FIX) no longer get SyntaxError on literal_eval in CSV import 
+* (FIX) no longer get SyntaxError on literal_eval in CSV import
 
 ### 2024.06.03
 * Added initial import_tools (CSV import currently)
