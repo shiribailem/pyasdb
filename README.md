@@ -64,17 +64,16 @@ query.query('z', lambda x: x < 10)
 - [x] Query Type Checking (to prevent TypeError if field has been assigned different types)
 - [ ] Subfield queries (your lambda can reference subfields, but the query function doesn't check to make sure they 
 exist)
-- [ ] Key type agnosticism (the key in the backend must be a string, but it can be handy to just str() all keys to allow
+- [x] Key type agnosticism (the key in the backend must be a string, but it can be handy to just str() all keys to allow
 different types)
 - [x] Available on PyPi (pip install pyasdb)
-- [x] Add help() data
-- [x] Add thread safety (automatically includes locks to secure writes)
-- [x] Update Routine that connects to dict.update
+- [x] thread safety (automatically includes locks to secure writes)
 - [x] pyasdb.import_tools contains tools for automatically importing and converting raw data (CSV only at the time of 
   writing)
 - [x] added support for forcing a different dbm backend to shelve, defaults to dumbdbm now for stability reasons
   (this will also help avoid issues if anyone installs a different natively supported dbm after opening the database as
-  shelves' default behavior automatically picks a db and could change when a new one is available)
+  shelves' default behavior automatically picks a db and could change when a new one is available, also enables 
+  in-memory by passing a dictionary variable instead of a dbm)
 
 ### PyDoc
 ```
@@ -103,9 +102,10 @@ CLASSES
      |  
      |  __init__(self, filename, flag='c', writeback=False)
      |      Database constructor
-     |      :param filename: Path and filename of the database file to use (will append .db to end)
-     |      :param flag: flag passed through to Shelve.open
-     |      :param writeback: Whether to enable writeback mode
+     |  :param filename: Path and filename of the database file to use (ignored if backend provided)
+     |  :param flag: flag passed through to Shelve.open
+     |  :param writeback: Whether to enable writeback mode
+     |  :param backend: (alternative) Accepts open DBM handler or dict object (overrides all other arguments)
      |  
      |  __iter__(self)
      |  
