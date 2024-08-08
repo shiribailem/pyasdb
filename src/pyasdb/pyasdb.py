@@ -39,6 +39,16 @@ class Query:
             )
         )
 
+    def query_none(self, field):
+        """
+        A query type that returns entries that are undefined or None
+        :param field: the field being searched
+        """
+        field = str(field)
+        return Query(self.table, list(filter(
+            lambda key: field not in self.table[key].keys() or self.table[key] is None, self.results))
+                     )
+
     def __iter__(self):
         self.index = 0
         return self
@@ -196,6 +206,13 @@ class Table:
         query = Query(self, self.keys())
         return query.query(field, func)
 
+    def query_none(self, field):
+        """
+        Generates an initial query_none and returns a Query object.
+        :param field: the field being search
+        """
+        query = Query(self, self.keys())
+        return query.query_none(field)
 
 class DB:
     """

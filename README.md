@@ -178,6 +178,10 @@ CLASSES
      |      :param checktype: if passed a type will automatically narrow results to that type to prevent TypeError
      |      :return: A new query object containing the results of the given query
      |  
+     |  query_none(self, field)
+     |      A query type that returns entries that are undefined or None
+     |      :param field: the field being searched
+     |
      |  ----------------------------------------------------------------------
      |  Data descriptors defined here:
      |  
