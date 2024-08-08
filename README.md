@@ -15,9 +15,9 @@ databases.
 ### Quickstart
 
 ```python
-from src.pyasdb.pyasdb import DB
+from pyasdb import DB
 
-# This will create a file 'test.db' in the local folder. 
+# This will create a files 'test.dat', 'test.dir', and 'test.bak' in the local folder. 
 # The name is passed directly to shelve so accepts paths, but will always append '.db' at the end. 
 db = DB('test')
 
