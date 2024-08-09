@@ -18,26 +18,40 @@ class Query:
         self.table = table
         self.results = results
 
-    def query(self, field, func, checktype=None):
+    def query(self, field, func, checktype=None, compare=None):
         """
         Make a sub-query and return a new narrower Query object
         :param field: the field being searched, will only parse entries that have this field
         :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
         :param checktype: if passed a type will automatically narrow results to that type to prevent TypeError
+        :param compare: if function takes an extra argument, use this argument
         :return: A new query object containing the results of the given query
         """
         field = str(field)
-        return Query(self.table, list(
-            filter(
-                lambda key:
+        if compare:
+            return Query(self.table, list(
+                filter(
+                    lambda key:
                     field in self.table[key].keys() and
                     (
-                        checktype is None or
-                        isinstance(self.table[key], checktype)
+                            checktype is None or
+                            isinstance(self.table[key], checktype)
                     ) and
-                    func(self.table[key][field]), self.results)
+                    func(self.table[key][field], compare), self.results)
+                )
             )
-        )
+        else:
+            return Query(self.table, list(
+                filter(
+                    lambda key:
+                        field in self.table[key].keys() and
+                        (
+                            checktype is None or
+                            isinstance(self.table[key], checktype)
+                        ) and
+                        func(self.table[key][field]), self.results)
+                )
+            )
 
     def query_none(self, field):
         """
@@ -196,15 +210,13 @@ class Table:
     def __repr__(self):
         return "<pyasdb.DB.Table: " + self.name + ">"
 
-    def query(self, field, func):
+    def query(self, *args, **kwargs):
         """
-        Generates an initial query and returns a Query object.
-        :param field: the field being searched, will only parse entries that have this field
-        :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
-        :return: A new Query object containing the results of the given query
+        Generates Query object and runs initial query.
+        See Query.query for inputs.
         """
         query = Query(self, self.keys())
-        return query.query(field, func)
+        return query.query(*args, **kwargs)
 
     def query_none(self, field):
         """
@@ -213,6 +225,7 @@ class Table:
         """
         query = Query(self, self.keys())
         return query.query_none(field)
+
 
 class DB:
     """
