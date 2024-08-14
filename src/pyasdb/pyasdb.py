@@ -250,11 +250,7 @@ class DB:
         self.writeback = writeback
         self.lock = Lock()
 
-        try:
-            tableNames = list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
-        except AttributeError:
-            tableNames = []
-
+        tableNames = list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
         self.tables = {}
 
         for table in tableNames:
