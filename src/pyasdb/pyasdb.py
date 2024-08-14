@@ -158,7 +158,7 @@ class Table:
         if comp_key not in self.parent.shelf:
             return {}
         else:
-            return self.parent.shelf['.'.join((self.name, key))]
+            return self.parent.shelf[comp_key]
 
     def __setitem__(self, key, value, sync=False):
         """
