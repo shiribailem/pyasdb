@@ -180,8 +180,6 @@ class Table:
         key = str(key)
         if not isinstance(value, dict):
             raise TypeError("Value must be a dictionary")
-        if self.name not in self.parent.tables.keys():
-            self.parent.tables[self.name] = self
 
         self.parent.raw_write('.'.join((self.name, key)), value)
 
@@ -205,7 +203,6 @@ class Table:
 
     def __iter__(self):
         self.index = 0
-        self.parent.tables[self.name] = self
         self.__keycache = self.keys()
         return self
 
@@ -255,7 +252,7 @@ class DB:
         else:
             self.dbm = backend
 
-        self.shelf = shelve.Shelf(self.dbm, writeback=writeback)
+        self.shelf = shelve.Shelf(self.dbm, writeback=False)
         self.raw_dict = {}
 
         self.writeback = writeback
@@ -265,12 +262,7 @@ class DB:
 
         self.filename = filename
 
-        tableNames = list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
-
         self.tables = {}
-
-        for table in tableNames:
-            self.tables[table] = Table(self, table)
 
         atexit.register(self.close)
 
@@ -278,7 +270,7 @@ class DB:
         """
         :return: List of all tables in the database
         """
-        return list(self.tables.keys())
+        return list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
 
     def get_bulk_lock(self):
         """
