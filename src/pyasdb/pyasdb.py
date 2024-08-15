@@ -2,7 +2,7 @@ import shelve
 import atexit
 from threading import Lock
 from dbm import dumb as dumbdbm
-
+from contextlib import nullcontext
 
 class Query:
     """
@@ -135,7 +135,7 @@ class Table:
         Returns a list of primary keys in the Table
         :return: list of keys
         """
-        return list(
+        keys = list(
             set(
                 map(
                     lambda table: '.'.join(table.split('.')[1:]),
@@ -145,6 +145,20 @@ class Table:
                 )
             )
         )
+        keys.extend(
+            list(
+                set(
+                    map(
+                        lambda table: '.'.join(table.split('.')[1:]),
+                        filter(
+                            lambda key: key.split('.')[0] == self.name and key.split('.')[0] not in keys,
+                            self.parent.raw_dict.keys()
+                        )
+                    )
+                )
+            )
+        )
+        return keys
 
     def sync(self):
         """
@@ -155,10 +169,7 @@ class Table:
     def __getitem__(self, key):
         # Replace Key Errors With Blank Values
         comp_key = '.'.join((self.name, str(key)))
-        if comp_key not in self.parent.shelf:
-            return {}
-        else:
-            return self.parent.shelf[comp_key]
+        return self.parent.raw_get(comp_key)
 
     def __setitem__(self, key, value, sync=False):
         """
@@ -169,10 +180,10 @@ class Table:
         key = str(key)
         if not isinstance(value, dict):
             raise TypeError("Value must be a dictionary")
-        with self.parent.lock:
-            self.parent.shelf['.'.join((self.name, key))] = value
-            if sync:
-                self.parent.sync()
+        if self.name not in self.parent.tables.keys():
+            self.parent.tables[self.name] = self
+
+        self.parent.raw_write('.'.join((self.name, key)), value)
 
     def update(self, key, obj):
         """
@@ -187,11 +198,10 @@ class Table:
 
     def __delitem__(self, key):
         key = str(key)
-        del self.parent.shelf['.'.join((self.name, key))]
+        self.parent.raw_delete('.'.join((self.name, key)))
 
     def __contains__(self, key):
-        key = str(key)
-        return '.'.join((self.name, key)) in self.parent.shelf
+        return key in self.keys()
 
     def __iter__(self):
         self.index = 0
@@ -246,9 +256,14 @@ class DB:
             self.dbm = backend
 
         self.shelf = shelve.Shelf(self.dbm, writeback=writeback)
+        self.raw_dict = {}
 
         self.writeback = writeback
         self.lock = Lock()
+        self.__nulllock = nullcontext(True)
+        self.threadsafe = False
+
+        self.filename = filename
 
         tableNames = list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
 
@@ -265,13 +280,33 @@ class DB:
         """
         return list(self.tables.keys())
 
-    def sync(self):
+    def get_bulk_lock(self):
+        """
+        :return: Lock object for bulk operations
+        """
+        self.threadsafe = False
+        return self.lock
+
+    def release_bulk_lock(self):
+        """
+        Releases bulk lock
+        """
+        self.threadsafe = True
+
+    def sync(self, lock=True):
         """
         If writeback enabled, manually sync
         """
-        with self.lock:
-            if self.writeback:
-                self.shelf.sync()
+        if lock:
+            lockhandle = self.lock
+        else:
+            lockhandle = nullcontext(True)
+
+        with lockhandle:
+            keylist = tuple(self.raw_dict.keys())
+            for key in keylist:
+                self.shelf[key] = self.raw_dict[key]
+                del self.raw_dict[key]
 
     def backup(self, filename=None, flag='n', backend=None, writeback=True):
         """
@@ -324,6 +359,38 @@ class DB:
             x = self[self.__keycache[self.index]]
             self.index += 1
             return x
+
+    def raw_get(self, key):
+        if key in self.raw_dict.keys():
+            return self.raw_dict[key]
+        else:
+            try:
+                return self.shelf[key]
+            except KeyError:
+                return {}
+
+    def raw_write(self, key, value):
+        if self.threadsafe:
+            lock = self.lock
+        else:
+            lock = self.__nulllock
+
+        with lock:
+            self.raw_dict[key] = value
+            if not self.writeback:
+                self.sync(lock=False)
+
+    def raw_delete(self, key):
+        if self.threadsafe:
+            lock = self.lock
+        else:
+            lock = self.__nulllock
+
+        with lock:
+            if key in self.raw_dict[key].keys():
+                del self.raw_dict[key]
+            if key in self.shelf.keys():
+                del self.shelf[key]
 
     def close(self):
         self.sync()
