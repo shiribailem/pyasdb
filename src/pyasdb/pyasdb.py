@@ -190,9 +190,9 @@ class Table:
         :param obj: dictionary containing new values to be merged with entry
         """
         key = str(key)
-        tmpx = self[key]
+        tmpx = self.__getitem__(key)
         tmpx.update(obj)
-        self[key] = tmpx
+        self.__setitem__(key, tmpx)
 
     def __delitem__(self, key):
         key = str(key)
