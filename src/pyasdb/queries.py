@@ -2,8 +2,13 @@
 Module containing functions for common queries to reduce repetitive lambda writing
 """
 
+
 def eq(value, compare):
     return value == compare
+
+
+def neq(value, compare):
+    return value != compare
 
 
 def gt(value, compare):
