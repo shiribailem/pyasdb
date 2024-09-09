@@ -7,7 +7,10 @@ from csv import DictReader
 from ast import literal_eval
 
 
-def csv_import(file, db, tablename, index, autoconvert=True, debug=False):
+def csv_import(file, db, tablename, index, autoconvert=True, debug=False, hints=None):
+    if hints is None:
+        hints = {}
+
     if debug:
         print(f'Importing file into db')
     data = DictReader(file)
@@ -36,7 +39,7 @@ def csv_import(file, db, tablename, index, autoconvert=True, debug=False):
                 for key in row:
                     if row[key] == '' or row[key] is None:
                         removekeys.append(key)
-                    else:
+                    elif key not in hints.keys() or hints[key] != str:
                         if row[key].isdigit():
                             row[key] = int(row[key])
                         else:
@@ -49,10 +52,14 @@ def csv_import(file, db, tablename, index, autoconvert=True, debug=False):
                                     if dateutil:
                                         try:
                                             row[key] = dateutil.parser.parse(row[key])
-                                        except:
+                                        except ValueError:
                                             pass
 
                 for key in removekeys:
+                    row.pop(key)
+
+            for key in row:
+                if key in hints.keys() and type(row[key]) is not hints[key]:
                     row.pop(key)
 
             table[str(row[index])] = row
