@@ -17,7 +17,7 @@ class Query:
         :param results: list of keys
         """
         self.table = table
-        self.results = results
+        self.results = list(results)
 
     def query(self, field, func, checktype=None, compare=None):
         """
@@ -284,7 +284,7 @@ class DB:
         if self.__bulkcache:
             return self.__bulkcache
 
-        keys = self.shelf.keys()
+        keys = list(self.shelf.keys())
         for key in self.raw_dict.keys():
             if key not in keys:
                 keys.append(key)
