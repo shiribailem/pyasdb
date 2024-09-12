@@ -379,6 +379,7 @@ class DB:
         # Perform a check of the check before pulling to avoid KeyErrors
         # Not using a try here as the key should *usually* be absent
         # RuntimeError will occur during threading sometimes while using .keys()
+        self.logger.debug(f'pyasdb: raw_get({key})')
         try:
             if key in self.raw_dict.keys():
                 return self.raw_dict[key]
@@ -392,6 +393,7 @@ class DB:
             return {}
 
     def raw_write(self, key, value):
+        self.logger.debug(f'pyasdb: raw_write({key}, {value})')
         if self.threadsafe:
             lock = self.lock
         else:
@@ -403,6 +405,7 @@ class DB:
                 self.sync(lock=False)
 
     def raw_delete(self, key):
+        self.logger.debug(f'pyasdb: raw_delete({key})')
         if self.threadsafe:
             lock = self.lock
         else:
@@ -415,6 +418,7 @@ class DB:
                 del self.shelf[key]
 
     def close(self):
+        self.logger.debug('pyasdb: close()')
         self.sync()
         self.shelf.close()
         if 'close' in dir(self.dbm):
