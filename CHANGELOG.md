@@ -12,6 +12,15 @@
 * Keys are now automatically convert to strings (via str())
 * (BREAKING?) CSV import matching routine changed to avoid odd conversion of integers into 
   dates
+* Added query_none as a special query to return *only* those entries where the field is missing or None
+* Added queries submodule to provide common functions for querying
+* Added compare argument to queries to support generic pre-written query functions
+* (FIX) fixed bug preventing creating of new databases
+* Refactored to implement true writeback with manual syncing
+* Added type hinting to import_tools.csv_import
+* Implemented bulk write locking
+* (FIX) improved thread safety when bulk writing
+* Added logging module and some debug messages
 
 ### 2024.06.04
 * (FIX) don't crash if dateutil is missing, making it an optional dependency
