@@ -3,6 +3,7 @@ import atexit
 from threading import Lock
 from dbm import dumb as dumbdbm
 from contextlib import nullcontext
+import logging
 
 class Query:
     """
@@ -140,20 +141,7 @@ class Table:
                 map(
                     lambda table: '.'.join(table.split('.')[1:]),
                     filter(
-                        lambda key: key.split('.')[0] == self.name, list(self.parent.shelf)
-                    )
-                )
-            )
-        )
-        keys.extend(
-            list(
-                set(
-                    map(
-                        lambda table: '.'.join(table.split('.')[1:]),
-                        filter(
-                            lambda key: key.split('.')[0] == self.name and key.split('.')[0] not in keys,
-                            self.parent.raw_dict.keys()
-                        )
+                        lambda key: key.split('.')[0] == self.name, list(self.parent.raw_keys())
                     )
                 )
             )
@@ -169,6 +157,7 @@ class Table:
     def __getitem__(self, key):
         # Replace Key Errors With Blank Values
         comp_key = '.'.join((self.name, str(key)))
+        self.parent.logger.debug("pyasdb: Getting key: " + comp_key)
         return self.parent.raw_get(comp_key)
 
     def __setitem__(self, key, value, sync=False):
@@ -181,7 +170,9 @@ class Table:
         if not isinstance(value, dict):
             raise TypeError("Value must be a dictionary")
 
-        self.parent.raw_write('.'.join((self.name, key)), value)
+        comp_key = '.'.join((self.name, key))
+        self.parent.logger.debug("pyasdb: Setting key: " + comp_key)
+        self.parent.raw_write(comp_key, value)
 
     def update(self, key, obj):
         """
@@ -196,7 +187,9 @@ class Table:
 
     def __delitem__(self, key):
         key = str(key)
-        self.parent.raw_delete('.'.join((self.name, key)))
+        comp_key = '.'.join((self.name, key))
+        self.parent.logger.debug("pyasdb: Deleting key: " + comp_key)
+        self.parent.raw_delete(comp_key)
 
     def __contains__(self, key):
         return key in self.keys()
@@ -247,6 +240,8 @@ class DB:
         :param backend: (alternative) Accepts open DBM handler or dict object (overrides all other arguments)
         """
 
+        self.logger = logging.getLogger('pyasdb')
+
         if backend is None:
             self.dbm = dumbdbm.open(filename, flag)
         else:
@@ -258,7 +253,9 @@ class DB:
         self.writeback = writeback
         self.lock = Lock()
         self.__nulllock = nullcontext(True)
-        self.threadsafe = False
+        self.threadsafe = True
+        self.__keycache = []
+        self.__bulkcache = ()
 
         self.filename = filename
 
@@ -270,19 +267,44 @@ class DB:
         """
         :return: List of all tables in the database
         """
-        return list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
+
+        keys = list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
+        for key in self.raw_dict.keys():
+            if key not in keys:
+                keys.append(key)
+        return keys
+
+    def raw_keys(self):
+        """
+        :return: the threadsafe combined keys of the writeback cache and the underlying shelf
+        """
+
+        # __bulkcache should only be set when doing a bulk operation
+        # When set use it to avoid a RunTime error on .keys()
+        if self.__bulkcache:
+            return self.__bulkcache
+
+        keys = self.shelf.keys()
+        for key in self.raw_dict.keys():
+            if key not in keys:
+                keys.append(key)
+        return keys
 
     def get_bulk_lock(self):
         """
         :return: Lock object for bulk operations
         """
         self.threadsafe = False
+        # Set __bulkcache so .keys() can be used while doing a bulk operation
+        self.__bulkcache = tuple(self.raw_keys())
         return self.lock
 
     def release_bulk_lock(self):
         """
         Releases bulk lock
         """
+        # Clear __bulkcache so the database resumes normal key usage
+        self.__bulkcache = ()
         self.threadsafe = True
 
     def sync(self, lock=True):
@@ -337,6 +359,7 @@ class DB:
         key = str(key)
         if not key in self.tables.keys():
             self.tables[key] = Table(self, key)
+
         return self.tables[key]
 
     def __iter__(self):
@@ -353,13 +376,20 @@ class DB:
             return x
 
     def raw_get(self, key):
-        if key in self.raw_dict.keys():
-            return self.raw_dict[key]
-        else:
-            try:
-                return self.shelf[key]
-            except KeyError:
-                return {}
+        # Perform a check of the check before pulling to avoid KeyErrors
+        # Not using a try here as the key should *usually* be absent
+        # RuntimeError will occur during threading sometimes while using .keys()
+        try:
+            if key in self.raw_dict.keys():
+                return self.raw_dict[key]
+        except RuntimeError:
+            self.logger.warning('pyasdb: RuntimeError while searching raw_dict.keys()')
+
+        try:
+            return self.shelf[key]
+        except KeyError:
+            self.logger.warning(f'pyasdb: KyError {key}')
+            return {}
 
     def raw_write(self, key, value):
         if self.threadsafe:
