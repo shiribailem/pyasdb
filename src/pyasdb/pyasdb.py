@@ -389,7 +389,7 @@ class DB:
         try:
             return self.shelf[key]
         except KeyError:
-            self.logger.warning(f'pyasdb: KyError {key}')
+            self.logger.debug(f'pyasdb: KeyError {key}')
             return {}
 
     def raw_write(self, key, value):
