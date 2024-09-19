@@ -28,7 +28,21 @@ class Query:
         :param compare: if function takes an extra argument, use this argument
         :return: A new query object containing the results of the given query
         """
-        field = str(field)
+        try:
+            hash(field)
+        except TypeError:
+            field = str(field)
+
+        if field in self.table.index_keys:
+            results = set()
+            for key in self.table.index[field].keys():
+                if compare and func(key, compare):
+                    results.update(self.table.index[field][key])
+                elif not compare and func(key):
+                    results.update(self.table.index[field][key])
+
+            return Query(self.table, filter(lambda x: x in results, self.results))
+
         if compare:
             return Query(self.table, list(
                 filter(
@@ -122,7 +136,7 @@ class Query:
 
 class Table:
     """Table class for managing individual database tables"""
-    def __init__(self, parent, name):
+    def __init__(self, parent, name, meta=False):
         """
         Table Constructor
         :param parent: handle of the DB
@@ -130,6 +144,59 @@ class Table:
         """
         self.parent = parent
         self.name = name
+        self.__meta = meta
+
+        if not self.__meta:
+            self.index = Table(self.parent, self.name + '__index', meta=True)
+            self.index_keys = list(self.index.keys())
+
+    def create_indexes(self, keys):
+        """
+        Creates an index on the given key
+        :param keys: keys to index on
+        """
+        refresh_keys = set()
+        for key in keys:
+            if key not in self.index_keys:
+                self.index[key] = {}
+                self.index_keys.append(key)
+                refresh_keys.update((key,))
+
+        if refresh_keys:
+            self.refresh_indexes(refresh_keys)
+
+    def remove_index(self, key):
+        """
+        Removes an index on the given key
+        :param key: key to remove index on
+        """
+        if key in self.index_keys:
+            del self.index[key]
+            self.index_keys.remove(key)
+        else:
+            raise KeyError("Index does not exist")
+
+    def refresh_indexes(self, keys):
+        """
+        Clear and rebuild indexes
+        :param keys: which indexes to refresh
+        """
+        for key in keys:
+            if key not in self.index_keys:
+                raise KeyError("Index does not exist")
+            self.index[key] = {}
+
+        for line in self.keys():
+            for key in keys:
+                if key in self[line].keys():
+                    if self[line][key] in self.index[key]:
+                        self.index[key][self[line][key]].update((line,))
+                    else:
+                        self.index[key][self[line][key]] = {line}
+
+    def refresh_all_indexes(self):
+        if self.index_keys:
+            self.refresh_indexes(self.index_keys)
 
     def keys(self):
         """
@@ -167,8 +234,56 @@ class Table:
         :param sync: boolean specifying to immediately sync if in writeback mode
         """
         key = str(key)
-        if not isinstance(value, dict):
+        if not isinstance(value, dict) and not self.__meta:
             raise TypeError("Value must be a dictionary")
+
+        # if empty then no need to check for keys that match the index
+        if not self.__meta and self.index_keys:
+            # store the old value in memory
+            old_value = self[key]
+
+            # Iterate over the keys in the new value
+            for field in value.keys():
+                # If it's one of the easy stringable types don't hash it, otherwise hash to increase versatility
+                if type(field) in (str, int, float):
+                    field_hash = field
+                else:
+                    field_hash = hash(field)
+
+                # Check if there's an index on the field before continuing
+                if field_hash in self.index_keys:
+                    # Use try except to combine a few different checks and hopefully minimize performance impact
+                    try:
+                        # Has the value changed?
+                        update = old_value[field] != value[field]
+                        # Do we need to clean up old index entries?
+                        old_exists = True
+                    except KeyError:
+                        update = True
+                        old_exists = False
+
+                    # Obviously if it hasn't changed then the index shouldn't have changed either
+                    if update:
+                        # Check to see if the value is unique
+                        new_index = value[field] not in self.index[field_hash]
+
+                        # If an old value existed, we need to remove it from now incorrect indexes
+                        if old_exists:
+                            try:
+                                self.index[field_hash][old_value[field]].remove(key)
+                            except KeyError:
+                                # Soft fail
+                                self.parent.logger.warning(
+                                    "pyasdb: Failed to remove key from index, update index required")
+
+                        # If it doesn't exist we can just create it, otherwise we need to update the existing set
+                        if new_index:
+                            # store as a set because the keys are always going to be unique
+                            self.index[field_hash][value[field]] = {key}
+                        else:
+                            index = self.index[field_hash][value[field]]
+                            index.update((key,))
+                            self.index[field_hash][value[field]] = index
 
         comp_key = '.'.join((self.name, key))
         self.parent.logger.debug("pyasdb: Setting key: " + comp_key)

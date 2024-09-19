@@ -1,4 +1,4 @@
-### 2024.07.22.1
+### Unstable
 * (BREAKING) Changed the shelf backend from the default auto-select to dumbdbm (increases 
   portability and makes behavior more predictable. Fix by either selecting the appropriate dbm
   or converting the files manually to dumbdbm)
@@ -21,6 +21,7 @@
 * Implemented bulk write locking
 * (FIX) improved thread safety when bulk writing
 * Added logging module and some debug messages
+* Added indexing
 
 ### 2024.06.04
 * (FIX) don't crash if dateutil is missing, making it an optional dependency
