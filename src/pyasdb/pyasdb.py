@@ -19,13 +19,14 @@ class Query:
         self.table = table
         self.results = list(results)
 
-    def query(self, field, func, checktype=None, compare=None):
+    def query(self, field, func, checktype=None, compare=None, count=None):
         """
         Make a sub-query and return a new narrower Query object
         :param field: the field being searched, will only parse entries that have this field
         :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
         :param checktype: if passed a type will automatically narrow results to that type to prevent TypeError
         :param compare: if function takes an extra argument, use this argument
+        :param count: specify the maximum number of results to return
         :return: A new query object containing the results of the given query
         """
         try:
@@ -41,11 +42,13 @@ class Query:
                 elif not compare and func(key):
                     results.update(self.table.index[field][key])
 
-            return Query(self.table, filter(lambda x: x in results, self.results))
+            if count:
+                return Query(self.table, list(filter(lambda x: x in results, self.results))[0:count])
+            else:
+                return Query(self.table, list(filter(lambda x: x in results, self.results)))
 
         if compare:
-            return Query(self.table, list(
-                filter(
+            results = filter(
                     lambda key:
                     field in self.table[key].keys() and
                     (
@@ -53,30 +56,48 @@ class Query:
                             isinstance(self.table[key], checktype)
                     ) and
                     func(self.table[key][field], compare), self.results)
-                )
-            )
-        else:
-            return Query(self.table, list(
-                filter(
-                    lambda key:
-                        field in self.table[key].keys() and
-                        (
-                            checktype is None or
-                            isinstance(self.table[key], checktype)
-                        ) and
-                        func(self.table[key][field]), self.results)
-                )
-            )
 
-    def query_none(self, field):
+        else:
+            results = filter(
+                lambda key:
+                    field in self.table[key].keys() and
+                    (
+                        checktype is None or
+                        isinstance(self.table[key], checktype)
+                    ) and
+                    func(self.table[key][field]), self.results)
+
+        if count:
+            new_results = list()
+            for i in range(count):
+                try:
+                    new_results.append(next(results))
+                except StopIteration:
+                    break
+            return Query(self.table, new_results)
+
+        return Query(self.table, list(results))
+
+    def query_none(self, field, count=None):
         """
         A query type that returns entries that are undefined or None
         :param field: the field being searched
         """
         field = str(field)
-        return Query(self.table, list(filter(
-            lambda key: field not in self.table[key].keys() or self.table[key] is None, self.results))
-                     )
+
+        results = filter(
+            lambda key: field not in self.table[key].keys() or self.table[key] is None, self.results)
+
+        if count:
+            new_results = []
+            for _ in range(count):
+                try:
+                    new_results.append(next(results))
+                except StopIteration:
+                    break
+            return Query(self.table, new_results)
+
+        return Query(self.table, list(results))
 
     def __iter__(self):
         self.index = 0
@@ -333,13 +354,13 @@ class Table:
         query = Query(self, self.keys())
         return query.query(*args, **kwargs)
 
-    def query_none(self, field):
+    def query_none(self, *args, **kwargs):
         """
         Generates an initial query_none and returns a Query object.
         :param field: the field being search
         """
         query = Query(self, self.keys())
-        return query.query_none(field)
+        return query.query_none(*args, **kwargs)
 
 
 class DB:
