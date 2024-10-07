@@ -202,18 +202,22 @@ class Table:
         Clear and rebuild indexes
         :param keys: which indexes to refresh
         """
+        tmp_index = {}
         for key in keys:
             if key not in self.index_keys:
                 raise KeyError("Index does not exist")
-            self.index[key] = {}
+            tmp_index[key] = {}
 
         for line in self.keys():
             for key in keys:
                 if key in self[line].keys():
-                    if self[line][key] in self.index[key]:
-                        self.index[key][self[line][key]].update((line,))
+                    if self[line][key] in tmp_index[key]:
+                        tmp_index[key][self[line][key]].update((line,))
                     else:
-                        self.index[key][self[line][key]] = {line}
+                        tmp_index[key][self[line][key]] = {line}
+
+        for key in self.index_keys:
+            self.index[key] = tmp_index[key]
 
     def refresh_all_indexes(self):
         if self.index_keys:
