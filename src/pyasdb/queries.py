@@ -52,8 +52,8 @@ def not_between(value, compare):
 
 
 def in_(value, compare):
-    return value in compare
+    return compare in value
 
 
 def not_in(value, compare):
-    return value not in compare
+    return compare in value
