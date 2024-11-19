@@ -413,9 +413,9 @@ class DB:
             if key not in keys:
                 keys.append(key)
 
-        for key in list(self.keys()):  # Use list to copy keys, because we might modify the dict during iteration
+        for key in list(keys):  # Use list to copy keys, because we modify the list during iteration
             if key.endswith('__index'):
-                del self.tables[key]
+                keys.remove(key)
 
         return keys
 
