@@ -557,7 +557,7 @@ class DB:
             lock = self.__nulllock
 
         with lock:
-            if key in self.raw_dict[key].keys():
+            if key in self.raw_dict.keys():
                 del self.raw_dict[key]
             if key in self.shelf.keys():
                 del self.shelf[key]
