@@ -412,6 +412,11 @@ class DB:
         for key in self.raw_dict.keys():
             if key not in keys:
                 keys.append(key)
+
+        for key in list(self.keys()):  # Use list to copy keys, because we might modify the dict during iteration
+            if key.endswith('__index'):
+                del self.tables[key]
+
         return keys
 
     def raw_keys(self):
