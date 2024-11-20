@@ -43,11 +43,7 @@ def test_initial_keys(db_instance):
     assert db_instance.keys() == []
 
 
-def test_get_item(db_instance):
-    assert isinstance(db_instance['new_table'], Table)
-
-
-def test_raw_get_without_inexistent_key(db_instance):
+def test_raw_get_without_existent_key(db_instance):
     assert db_instance.raw_get('nonsense') == {}
 
 
@@ -80,7 +76,7 @@ def test_close(db_instance):
         db_instance.raw_get('key')
 
 
-def test_table_creation(db_table_instance):
+def test_get_table(db_table_instance):
     assert isinstance(db_table_instance, Table)
 
 
