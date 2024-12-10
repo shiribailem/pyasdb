@@ -29,10 +29,11 @@ class Query:
         :param count: specify the maximum number of results to return
         :return: A new query object containing the results of the given query
         """
-        try:
-            hash(field)
-        except TypeError:
-            field = str(field)
+
+        if type(field) in (str, int, float):
+            field = field
+        else:
+            field = hash(field)
 
         if field in self.table.index_keys:
             results = set()
