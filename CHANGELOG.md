@@ -22,6 +22,7 @@
 * (FIX) improved thread safety when bulk writing
 * Added logging module and some debug messages
 * Added indexing
+* (Fix) Uncaught potential OverflowError in dateutil parsing in import_tools
 
 ### 2024.06.04
 * (FIX) don't crash if dateutil is missing, making it an optional dependency
