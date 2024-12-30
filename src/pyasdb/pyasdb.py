@@ -4,6 +4,122 @@ from threading import Lock
 from dbm import dumb as dumbdbm
 from contextlib import nullcontext
 import logging
+import typing
+
+
+class Entry:
+    """
+    Represents an Entry in a data store, providing structured access to its content.
+
+    Entry objects act as intermediaries for accessing and manipulating the content
+    of a data store. They can work with dictionary-like or list-like structures and
+    maintain a handle to the underlying data store. The class supports features like
+    auto-updating the data store and using default values for missing keys.
+
+    Attributes:
+        handle (Table | Entry | dict): The data source or upper-level entry this entry is associated with.
+        key (str): The key of the entry in the data store.
+        value (dict | list): The content of this entry, which must be either a dictionary or a list.
+        auto_update (bool): Whether changes to the entry automatically reflect in the data store.
+        defaults (dict | list | None): A dictionary or list containing default values, of the same type
+            as the value.
+
+    Raises:
+        TypeError: If the handle is not a Table, Entry, or dict.
+        TypeError: If value is not a dictionary or list.
+        TypeError: If defaults are provided but are not of the same type as value.
+
+    """
+    def __init__(self, handle, key, value, auto_update=False, defaults=None):
+        self.handle = handle
+        if isinstance(self.handle, Table):
+            self.top_level = True
+        elif isinstance(self.handle, Entry):
+            self.top_level = False
+        elif isinstance(self.handle, dict):
+            self.top_level = True
+        else:
+            raise TypeError("Handle Object must be Table, Entry, or dict")
+        self.key = key
+        self.value = value
+        self.auto_update = auto_update
+        if isinstance(value, dict):
+            self.list = False
+        elif isinstance(value, list):
+            self.list = True
+        else:
+            raise TypeError("Value must be a dictionary or list")
+
+        if defaults:
+            if not isinstance(defaults, type(value)):
+                raise TypeError("Defaults must be same type as value")
+
+        self.defaults = defaults
+
+    def db_write(self):
+        """
+        Writes the current object's data into the database handle.
+
+        This method ensures the current object's data is appropriately written to the provided
+        database handle. If the object is marked as top-level, the associated key-value pair
+        is directly written to the handle. If not a top-level object, the method delegates the
+        writing operation to the handle's internal write mechanism.
+
+        Returns:
+            None
+
+        """
+        if self.top_level:
+            self.handle[self.key] = self.value
+        else:
+            self.handle.write()
+
+    def __getitem__(self, key):
+        if self.list and not isinstance(key, int):
+            raise KeyError("Entry is a list, key must be an integer")
+        elif not self.list and not isinstance(key, typing.Hashable):
+            raise KeyError("Entry is a dictionary, key must be a Hashable")
+
+        value = None
+
+        if self.defaults and key not in self.value:
+            value = self.defaults[key]
+        else:
+            value = self.value[key]
+
+        # If somehow an entry does make it into the database, fix it and throw a message.
+        # This shouldn't render a database unreadable, it's mostly just a problem to use the entry as-is
+        # so you're not accidentally mixing versions of the object.
+        if isinstance(value, Entry):
+            value = value.value
+            print("WARNING: Entry object found in database.")
+
+        if isinstance(value, dict) or isinstance(value, list):
+            try:
+                value = Entry(self.handle, key, value, self.auto_update, self.defaults[key])
+            except TypeError:
+                value = Entry(self.handle, key, value, self.auto_update)
+
+        return value
+
+    def __setitem__(self, key, value):
+        # Avoid accidentally writing an entry object to the database
+        if isinstance(value, Entry):
+            value = value.value
+
+        self.value[key] = value
+        if self.auto_update:
+            self.db_write()
+
+    def __repr__(self):
+        return f"<Entry {self.key}: {self.value}>"
+
+    def __getattr__(self, key):
+        result = getattr(self.value, key)
+        if self.auto_update:
+            self.db_write()
+        return result
+
 
 class Query:
     """
@@ -158,7 +274,7 @@ class Query:
 
 class Table:
     """Table class for managing individual database tables"""
-    def __init__(self, parent, name, meta=False):
+    def __init__(self, parent, name, meta=False, defaults=None):
         """
         Table Constructor
         :param parent: handle of the DB
@@ -167,6 +283,7 @@ class Table:
         self.parent = parent
         self.name = name
         self.__meta = meta
+        self.defaults = defaults
 
         if not self.__meta:
             self.index = Table(self.parent, self.name + '__index', meta=True)
@@ -251,7 +368,9 @@ class Table:
         # Replace Key Errors With Blank Values
         comp_key = '.'.join((self.name, str(key)))
         self.parent.logger.debug("pyasdb: Getting key: " + comp_key)
-        return self.parent.raw_get(comp_key)
+
+        # Wrap results in an Entry object to support advanced functions
+        return Entry(self, key, self.parent.raw_get(comp_key), defaults=self.defaults)
 
     def __setitem__(self, key, value, sync=False):
         """
@@ -260,8 +379,13 @@ class Table:
         :param sync: boolean specifying to immediately sync if in writeback mode
         """
         key = str(key)
+
+        # Entry objects should never be saved to the database
+        if isinstance(value, Entry):
+            value = value.value
+
         if not isinstance(value, dict) and not self.__meta:
-            raise TypeError("Value must be a dictionary")
+            raise TypeError("Value must be a dict or Entry object")
 
         # if empty then no need to check for keys that match the index
         if not self.__meta and self.index_keys:
@@ -275,6 +399,7 @@ class Table:
                     field_hash = field
                 else:
                     field_hash = hash(field)
+
 
                 # Check if there's an index on the field before continuing
                 if field_hash in self.index_keys:
@@ -495,6 +620,35 @@ class DB:
         backupshelf.sync()
         backupshelf.close()
         backend.close()
+
+    def set_table_defaults(self, table, defaults):
+        """
+        Sets default values for a specific table in the database. If the table does not
+        exist in the current context, it creates a new table instance with the provided
+        default values. If the table already exists, it updates the existing table's
+        default values.
+
+        Parameters
+        ----------
+        table : Any
+            The identifier of the table for which defaults are to be set. It can be any
+            supported type that represents a table name/key.
+        defaults : dict
+            A dictionary containing default values to be associated with the specified
+            table.
+
+        Raises
+        ------
+        TypeError
+            If the `defaults` argument is not a dictionary.
+        """
+        if not isinstance(defaults, dict):
+            raise TypeError("Defaults must be a dictionary")
+
+        if table not in self.tables.keys():
+            self.tables[table] = Table(self, table, defaults=defaults)
+        else:
+            self.tables[table].defaults = defaults
 
     def __getitem__(self, key):
         """

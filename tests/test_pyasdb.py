@@ -1,6 +1,6 @@
 import os
 import pytest
-from src.pyasdb.pyasdb import DB, Table
+from src.pyasdb.pyasdb import DB, Table, Entry
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ def test_get_table(db_table_instance):
 
 
 def test_table_row_creation(db_table_instance):
-    assert isinstance(db_table_instance['row'], dict)
+    assert isinstance(db_table_instance['row'], Entry)
 
 
 def test_table_write(db_table_instance):
