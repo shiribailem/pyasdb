@@ -247,8 +247,6 @@ class Query:
         :param key(int): list index of result
         :return:
         """
-        if not isinstance(value, dict):
-            raise TypeError("Value must be a dictionary")
         if isinstance(key, int):
             self.table[self.results[key]] = value
         elif isinstance(key, str):
