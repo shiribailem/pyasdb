@@ -368,7 +368,9 @@ class Table:
         self.parent.logger.debug("pyasdb: Getting key: " + comp_key)
 
         # Wrap results in an Entry object to support advanced functions
-        return Entry(self, key, self.parent.raw_get(comp_key), defaults=self.defaults)
+        if not self.__meta:
+            return Entry(self, key, self.parent.raw_get(comp_key), defaults=self.defaults)
+        return self.parent.raw_get(comp_key)
 
     def __setitem__(self, key, value, sync=False):
         """
