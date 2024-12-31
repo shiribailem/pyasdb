@@ -4,6 +4,122 @@ from threading import Lock
 from dbm import dumb as dumbdbm
 from contextlib import nullcontext
 import logging
+import typing
+
+
+class Entry:
+    """
+    Represents an Entry in a data store, providing structured access to its content.
+
+    Entry objects act as intermediaries for accessing and manipulating the content
+    of a data store. They can work with dictionary-like or list-like structures and
+    maintain a handle to the underlying data store. The class supports features like
+    auto-updating the data store and using default values for missing keys.
+
+    Attributes:
+        handle (Table | Entry | dict): The data source or upper-level entry this entry is associated with.
+        key (str): The key of the entry in the data store.
+        value (dict | list): The content of this entry, which must be either a dictionary or a list.
+        auto_update (bool): Whether changes to the entry automatically reflect in the data store.
+        defaults (dict | list | None): A dictionary or list containing default values, of the same type
+            as the value.
+
+    Raises:
+        TypeError: If the handle is not a Table, Entry, or dict.
+        TypeError: If value is not a dictionary or list.
+        TypeError: If defaults are provided but are not of the same type as value.
+
+    """
+    def __init__(self, handle, key, value, auto_update=False, defaults=None):
+        self.handle = handle
+        if isinstance(self.handle, Table):
+            self.top_level = True
+        elif isinstance(self.handle, Entry):
+            self.top_level = False
+        elif isinstance(self.handle, dict):
+            self.top_level = True
+        else:
+            raise TypeError("Handle Object must be Table, Entry, or dict")
+        self.key = key
+        self.value = value
+        self.auto_update = auto_update
+        if isinstance(value, dict):
+            self.list = False
+        elif isinstance(value, list):
+            self.list = True
+        else:
+            raise TypeError("Value must be a dictionary or list")
+
+        if defaults:
+            if not isinstance(defaults, type(value)):
+                raise TypeError("Defaults must be same type as value")
+
+        self.defaults = defaults
+
+    def db_write(self):
+        """
+        Writes the current object's data into the database handle.
+
+        This method ensures the current object's data is appropriately written to the provided
+        database handle. If the object is marked as top-level, the associated key-value pair
+        is directly written to the handle. If not a top-level object, the method delegates the
+        writing operation to the handle's internal write mechanism.
+
+        Returns:
+            None
+
+        """
+        if self.top_level:
+            self.handle[self.key] = self.value
+        else:
+            self.handle.write()
+
+    def __getitem__(self, key):
+        if self.list and not isinstance(key, int):
+            raise KeyError("Entry is a list, key must be an integer")
+        elif not self.list and not isinstance(key, typing.Hashable):
+            raise KeyError("Entry is a dictionary, key must be a Hashable")
+
+        value = None
+
+        if self.defaults and key not in self.value:
+            value = self.defaults[key]
+        else:
+            value = self.value[key]
+
+        # If somehow an entry does make it into the database, fix it and throw a message.
+        # This shouldn't render a database unreadable, it's mostly just a problem to use the entry as-is
+        # so you're not accidentally mixing versions of the object.
+        if isinstance(value, Entry):
+            value = value.value
+            print("WARNING: Entry object found in database.")
+
+        if isinstance(value, dict) or isinstance(value, list):
+            try:
+                value = Entry(self.handle, key, value, self.auto_update, self.defaults[key])
+            except TypeError:
+                value = Entry(self.handle, key, value, self.auto_update)
+
+        return value
+
+    def __setitem__(self, key, value):
+        # Avoid accidentally writing an entry object to the database
+        if isinstance(value, Entry):
+            value = value.value
+
+        self.value[key] = value
+        if self.auto_update:
+            self.db_write()
+
+    def __repr__(self):
+        return f"<Entry {self.key}: {self.value}>"
+
+    def __getattr__(self, key):
+        result = getattr(self.value, key)
+        if self.auto_update:
+            self.db_write()
+        return result
+
 
 class Query:
     """
@@ -19,19 +135,37 @@ class Query:
         self.table = table
         self.results = list(results)
 
-    def query(self, field, func, checktype=None, compare=None):
+    def query(self, field, func, checktype=None, compare=None, count=None):
         """
         Make a sub-query and return a new narrower Query object
         :param field: the field being searched, will only parse entries that have this field
         :param func: a function reference applied to a filter query (ie. lambda x: x > 5)
         :param checktype: if passed a type will automatically narrow results to that type to prevent TypeError
         :param compare: if function takes an extra argument, use this argument
+        :param count: specify the maximum number of results to return
         :return: A new query object containing the results of the given query
         """
-        field = str(field)
+
+        if type(field) in (str, int, float):
+            field = field
+        else:
+            field = hash(field)
+
+        if field in self.table.index_keys:
+            results = set()
+            for key in self.table.index[field].keys():
+                if compare and func(key, compare):
+                    results.update(self.table.index[field][key])
+                elif not compare and func(key):
+                    results.update(self.table.index[field][key])
+
+            if count:
+                return Query(self.table, list(filter(lambda x: x in results, self.results))[0:count])
+            else:
+                return Query(self.table, list(filter(lambda x: x in results, self.results)))
+
         if compare:
-            return Query(self.table, list(
-                filter(
+            results = filter(
                     lambda key:
                     field in self.table[key].keys() and
                     (
@@ -39,30 +173,48 @@ class Query:
                             isinstance(self.table[key], checktype)
                     ) and
                     func(self.table[key][field], compare), self.results)
-                )
-            )
-        else:
-            return Query(self.table, list(
-                filter(
-                    lambda key:
-                        field in self.table[key].keys() and
-                        (
-                            checktype is None or
-                            isinstance(self.table[key], checktype)
-                        ) and
-                        func(self.table[key][field]), self.results)
-                )
-            )
 
-    def query_none(self, field):
+        else:
+            results = filter(
+                lambda key:
+                    field in self.table[key].keys() and
+                    (
+                        checktype is None or
+                        isinstance(self.table[key], checktype)
+                    ) and
+                    func(self.table[key][field]), self.results)
+
+        if count:
+            new_results = list()
+            for i in range(count):
+                try:
+                    new_results.append(next(results))
+                except StopIteration:
+                    break
+            return Query(self.table, new_results)
+
+        return Query(self.table, list(results))
+
+    def query_none(self, field, count=None):
         """
         A query type that returns entries that are undefined or None
         :param field: the field being searched
         """
         field = str(field)
-        return Query(self.table, list(filter(
-            lambda key: field not in self.table[key].keys() or self.table[key] is None, self.results))
-                     )
+
+        results = filter(
+            lambda key: field not in self.table[key].keys() or self.table[key] is None, self.results)
+
+        if count:
+            new_results = []
+            for _ in range(count):
+                try:
+                    new_results.append(next(results))
+                except StopIteration:
+                    break
+            return Query(self.table, new_results)
+
+        return Query(self.table, list(results))
 
     def __iter__(self):
         self.index = 0
@@ -95,8 +247,6 @@ class Query:
         :param key(int): list index of result
         :return:
         """
-        if not isinstance(value, dict):
-            raise TypeError("Value must be a dictionary")
         if isinstance(key, int):
             self.table[self.results[key]] = value
         elif isinstance(key, str):
@@ -122,7 +272,7 @@ class Query:
 
 class Table:
     """Table class for managing individual database tables"""
-    def __init__(self, parent, name):
+    def __init__(self, parent, name, meta=False, defaults=None):
         """
         Table Constructor
         :param parent: handle of the DB
@@ -130,6 +280,64 @@ class Table:
         """
         self.parent = parent
         self.name = name
+        self.__meta = meta
+        self.defaults = defaults
+
+        if not self.__meta:
+            self.index = Table(self.parent, self.name + '__index', meta=True)
+            self.index_keys = list(self.index.keys())
+
+    def create_indexes(self, keys):
+        """
+        Creates an index on the given key
+        :param keys: keys to index on
+        """
+        refresh_keys = set()
+        for key in keys:
+            if key not in self.index_keys:
+                self.index[key] = {}
+                self.index_keys.append(key)
+                refresh_keys.update((key,))
+
+        if refresh_keys:
+            self.refresh_indexes(refresh_keys)
+
+    def remove_index(self, key):
+        """
+        Removes an index on the given key
+        :param key: key to remove index on
+        """
+        if key in self.index_keys:
+            del self.index[key]
+            self.index_keys.remove(key)
+        else:
+            raise KeyError("Index does not exist")
+
+    def refresh_indexes(self, keys):
+        """
+        Clear and rebuild indexes
+        :param keys: which indexes to refresh
+        """
+        tmp_index = {}
+        for key in keys:
+            if key not in self.index_keys:
+                raise KeyError("Index does not exist")
+            tmp_index[key] = {}
+
+        for line in self.keys():
+            for key in keys:
+                if key in self[line].keys():
+                    if self[line][key] in tmp_index[key]:
+                        tmp_index[key][self[line][key]].update((line,))
+                    else:
+                        tmp_index[key][self[line][key]] = {line}
+
+        for key in self.index_keys:
+            self.index[key] = tmp_index[key]
+
+    def refresh_all_indexes(self):
+        if self.index_keys:
+            self.refresh_indexes(self.index_keys)
 
     def keys(self):
         """
@@ -158,7 +366,9 @@ class Table:
         # Replace Key Errors With Blank Values
         comp_key = '.'.join((self.name, str(key)))
         self.parent.logger.debug("pyasdb: Getting key: " + comp_key)
-        return self.parent.raw_get(comp_key)
+
+        # Wrap results in an Entry object to support advanced functions
+        return Entry(self, key, self.parent.raw_get(comp_key), defaults=self.defaults)
 
     def __setitem__(self, key, value, sync=False):
         """
@@ -167,8 +377,62 @@ class Table:
         :param sync: boolean specifying to immediately sync if in writeback mode
         """
         key = str(key)
-        if not isinstance(value, dict):
-            raise TypeError("Value must be a dictionary")
+
+        # Entry objects should never be saved to the database
+        if isinstance(value, Entry):
+            value = value.value
+
+        if not isinstance(value, dict) and not self.__meta:
+            raise TypeError("Value must be a dict or Entry object")
+
+        # if empty then no need to check for keys that match the index
+        if not self.__meta and self.index_keys:
+            # store the old value in memory
+            old_value = self[key]
+
+            # Iterate over the keys in the new value
+            for field in value.keys():
+                # If it's one of the easy stringable types don't hash it, otherwise hash to increase versatility
+                if type(field) in (str, int, float):
+                    field_hash = field
+                else:
+                    field_hash = hash(field)
+
+
+                # Check if there's an index on the field before continuing
+                if field_hash in self.index_keys:
+                    # Use try except to combine a few different checks and hopefully minimize performance impact
+                    try:
+                        # Has the value changed?
+                        update = old_value[field] != value[field]
+                        # Do we need to clean up old index entries?
+                        old_exists = True
+                    except KeyError:
+                        update = True
+                        old_exists = False
+
+                    # Obviously if it hasn't changed then the index shouldn't have changed either
+                    if update:
+                        # Check to see if the value is unique
+                        new_index = value[field] not in self.index[field_hash]
+
+                        # If an old value existed, we need to remove it from now incorrect indexes
+                        if old_exists:
+                            try:
+                                self.index[field_hash][old_value[field]].remove(key)
+                            except KeyError:
+                                # Soft fail
+                                self.parent.logger.warning(
+                                    "pyasdb: Failed to remove key from index, update index required")
+
+                        # If it doesn't exist we can just create it, otherwise we need to update the existing set
+                        if new_index:
+                            # store as a set because the keys are always going to be unique
+                            self.index[field_hash][value[field]] = {key}
+                        else:
+                            index = self.index[field_hash][value[field]]
+                            index.update((key,))
+                            self.index[field_hash][value[field]] = index
 
         comp_key = '.'.join((self.name, key))
         self.parent.logger.debug("pyasdb: Setting key: " + comp_key)
@@ -218,13 +482,13 @@ class Table:
         query = Query(self, self.keys())
         return query.query(*args, **kwargs)
 
-    def query_none(self, field):
+    def query_none(self, *args, **kwargs):
         """
         Generates an initial query_none and returns a Query object.
         :param field: the field being search
         """
         query = Query(self, self.keys())
-        return query.query_none(field)
+        return query.query_none(*args, **kwargs)
 
 
 class DB:
@@ -272,6 +536,11 @@ class DB:
         for key in self.raw_dict.keys():
             if key not in keys:
                 keys.append(key)
+
+        for key in list(keys):  # Use list to copy keys, because we modify the list during iteration
+            if key.endswith('__index'):
+                keys.remove(key)
+
         return keys
 
     def raw_keys(self):
@@ -350,6 +619,35 @@ class DB:
         backupshelf.close()
         backend.close()
 
+    def set_table_defaults(self, table, defaults):
+        """
+        Sets default values for a specific table in the database. If the table does not
+        exist in the current context, it creates a new table instance with the provided
+        default values. If the table already exists, it updates the existing table's
+        default values.
+
+        Parameters
+        ----------
+        table : Any
+            The identifier of the table for which defaults are to be set. It can be any
+            supported type that represents a table name/key.
+        defaults : dict
+            A dictionary containing default values to be associated with the specified
+            table.
+
+        Raises
+        ------
+        TypeError
+            If the `defaults` argument is not a dictionary.
+        """
+        if not isinstance(defaults, dict):
+            raise TypeError("Defaults must be a dictionary")
+
+        if table not in self.tables.keys():
+            self.tables[table] = Table(self, table, defaults=defaults)
+        else:
+            self.tables[table].defaults = defaults
+
     def __getitem__(self, key):
         """
         Returns a Table, will create a new Table if one does not already exist.
@@ -412,7 +710,7 @@ class DB:
             lock = self.__nulllock
 
         with lock:
-            if key in self.raw_dict[key].keys():
+            if key in self.raw_dict.keys():
                 del self.raw_dict[key]
             if key in self.shelf.keys():
                 del self.shelf[key]

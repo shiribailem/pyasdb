@@ -52,7 +52,7 @@ def csv_import(file, db, tablename, index, autoconvert=True, debug=False, hints=
                                     if dateutil:
                                         try:
                                             row[key] = dateutil.parser.parse(row[key])
-                                        except ValueError:
+                                        except (ValueError, OverflowError):
                                             pass
 
                 for key in removekeys:
