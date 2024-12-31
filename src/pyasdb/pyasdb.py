@@ -5,6 +5,7 @@ from dbm import dumb as dumbdbm
 from contextlib import nullcontext
 import logging
 import typing
+from copy import deepcopy
 
 
 class Entry:
@@ -54,7 +55,7 @@ class Entry:
             if not isinstance(defaults, type(value)):
                 raise TypeError("Defaults must be same type as value")
 
-        self.defaults = defaults
+        self.defaults = deepcopy(defaults)
 
     def db_write(self):
         """
@@ -83,9 +84,8 @@ class Entry:
         value = None
 
         if self.defaults and key not in self.value:
-            value = self.defaults[key]
-        else:
-            value = self.value[key]
+            self.value[key] = self.defaults[key]
+        value = self.value[key]
 
         # If somehow an entry does make it into the database, fix it and throw a message.
         # This shouldn't render a database unreadable, it's mostly just a problem to use the entry as-is
@@ -108,7 +108,7 @@ class Entry:
             value = value.value
 
         self.value[key] = value
-        if self.auto_update:
+        if self.auto_update or not self.top_level:
             self.db_write()
 
     def __repr__(self):
