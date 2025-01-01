@@ -135,7 +135,7 @@ class Entry:
         if isinstance(value, Special):
             raise ValueError("Special Objects Can Not Be Assigned To Entries, They Should Only Be Assigned To Defaults")
 
-        if key in self.defaults.keys():
+        if self.defaults and key in self.defaults.keys():
             if isinstance(self.defaults[key], Special):
                 raise ValueError("Special Objects Can Not Be Changed Outside of Defaults Definitions")
 
@@ -151,6 +151,12 @@ class Entry:
         if self.auto_update:
             self.db_write()
         return result
+
+    def __delitem__(self, key):
+        del self.value[key]
+        if self.auto_update or not self.top_level:
+            if self.auto_update:
+                self.db_write()
 
 
 class Query:
