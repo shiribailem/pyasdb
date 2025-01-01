@@ -609,7 +609,7 @@ class DB:
 
     def backup(self, filename=None, flag='n', backend=None, writeback=True):
         """
-        Creates a backup of the current database
+        Creates a backup of the current live database.
         :param filename: Path and filename of the database file to use (ignored if backend provided)
         :param flag: flag passed through to Shelve.open
         :param backend: (alternative) Accepts open DBM handler (overrides all other arguments)
@@ -621,15 +621,14 @@ class DB:
 
         backupshelf = shelve.Shelf(backend, writeback=writeback)
 
-        keylist = []
-
         for key in self.shelf.keys():
             backupshelf[key] = self.shelf[key]
-            keylist.append(key)
 
-        for key in backupshelf.keys():
-            if not key in keylist:
-                del backupshelf[key]
+        removed_keys = set(backupshelf.keys())
+        removed_keys.difference_update(set(self.shelf.keys()))
+
+        for key in removed_keys:
+            del backupshelf[key]
 
         backupshelf.sync()
         backupshelf.close()
