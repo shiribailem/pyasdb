@@ -151,7 +151,10 @@ class Query:
         else:
             field = hash(field)
 
+        # Check if there's an index related to this search, if so use that index
         if field in self.table.index_keys:
+            # Use a set for results because it'll quickly eliminate duplicates and allow
+            # intersection update with existing results
             results = set()
             for key in self.table.index[field].keys():
                 if compare and func(key, compare):
@@ -159,10 +162,14 @@ class Query:
                 elif not compare and func(key):
                     results.update(self.table.index[field][key])
 
+            # This merges the new search with existing results, returning only entries that are in both
+            results.intersection_update(self.results)
+
+            # If count is set, return only that many entries
             if count:
-                return Query(self.table, list(filter(lambda x: x in results, self.results))[0:count])
+                return Query(self.table, list(results)[0:count])
             else:
-                return Query(self.table, list(filter(lambda x: x in results, self.results)))
+                return Query(self.table, results)
 
         if compare:
             results = filter(
@@ -184,6 +191,9 @@ class Query:
                     ) and
                     func(self.table[key][field]), self.results)
 
+        # not 100% certain this works, in theory the filter returns an iterable object and on each iteration
+        # it runs comparisons until it finds a match then returns just that entry. Which means this will run
+        # comparisons only as long as it takes to get to count, saving time.
         if count:
             new_results = list()
             for i in range(count):
@@ -199,12 +209,16 @@ class Query:
         """
         A query type that returns entries that are undefined or None
         :param field: the field being searched
+        :param count: specify the maximum number of results to return
         """
         field = str(field)
 
         results = filter(
             lambda key: field not in self.table[key].keys() or self.table[key] is None, self.results)
 
+        # not 100% certain this works, in theory the filter returns an iterable object and on each iteration
+        # it runs comparisons until it finds a match then returns just that entry. Which means this will run
+        # comparisons only as long as it takes to get to count, saving time.
         if count:
             new_results = []
             for _ in range(count):
