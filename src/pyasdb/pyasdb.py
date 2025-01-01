@@ -152,7 +152,7 @@ class Query:
             field = hash(field)
 
         # Check if there's an index related to this search, if so use that index
-        if field in self.table.index_keys:
+        if field in self.table.index_keys and len(self.table.index[field].keys()) < len(self.results):
             # Use a set for results because it'll quickly eliminate duplicates and allow
             # intersection update with existing results
             results = set()
