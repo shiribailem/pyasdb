@@ -8,6 +8,27 @@ import typing
 from copy import deepcopy
 
 
+class Special:
+    def __init__(self):
+        pass
+
+    def call(self, entry):
+        pass
+
+
+class Join(Special):
+    def __init__(self, table, field=None):
+        super().__init__()
+        self.table = table
+        self.field = field
+
+    def call(self, entry):
+        if self.field:
+            return self.table[entry[self.field]]
+        else:
+            return self.table[entry.key]
+
+
 class Entry:
     """
     Represents an Entry in a data store, providing structured access to its content.
@@ -55,7 +76,7 @@ class Entry:
             if not isinstance(defaults, type(value)):
                 raise TypeError("Defaults must be same type as value")
 
-        self.defaults = deepcopy(defaults)
+        self.defaults = defaults
 
     def db_write(self):
         """
@@ -83,8 +104,12 @@ class Entry:
 
         value = None
 
-        if self.defaults and key not in self.value:
-            self.value[key] = self.defaults[key]
+        if self.defaults:
+            if key in self.defaults.keys():
+                if isinstance(self.defaults[key], Special):
+                    return self.defaults[key].call(self)
+                if key not in self.value:
+                    self.value[key] = deepcopy(self.defaults[key])
         value = self.value[key]
 
         # If somehow an entry does make it into the database, fix it and throw a message.
@@ -106,6 +131,13 @@ class Entry:
         # Avoid accidentally writing an entry object to the database
         if isinstance(value, Entry):
             value = value.value
+
+        if isinstance(value, Special):
+            raise ValueError("Special Objects Can Not Be Assigned To Entries, They Should Only Be Assigned To Defaults")
+
+        if key in self.defaults.keys():
+            if isinstance(self.defaults[key], Special):
+                raise ValueError("Special Objects Can Not Be Changed Outside of Defaults Definitions")
 
         self.value[key] = value
         if self.auto_update or not self.top_level:

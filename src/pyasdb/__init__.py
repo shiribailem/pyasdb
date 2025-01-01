@@ -10,4 +10,4 @@ Usage:
     from pyasdb import DB, Table, Query
 """
 
-from .pyasdb import DB, Table, Query
+from .pyasdb import DB, Table, Query, Special, Join, Entry
