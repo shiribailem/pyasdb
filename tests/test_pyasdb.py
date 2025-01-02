@@ -1,6 +1,7 @@
 import os
 import pytest
 from src.pyasdb.pyasdb import DB, Table, Entry
+import src.pyasdb.queries as queries
 
 
 @pytest.fixture
@@ -29,6 +30,20 @@ def db_file_instance():
 def db_table_instance():
     db = DB(backend={})
     yield db['table']
+
+
+@pytest.fixture
+def db_sample_data():
+    db = DB(backend={})
+    table = db['table']
+    for i in range(5):
+        table[f'row{i}'] = {'key': f'value{i}', 'deep': {'key': 10}}
+
+    for i in range(5):
+        table[f'int-row{i}'] = {'key': i, 'deep': {'key': -10}}
+
+    table["difference_line"] = {'test': "alt data"}
+    yield table
 
 
 def test_db_created(db_instance):
@@ -89,3 +104,15 @@ def test_table_write(db_table_instance):
     assert db_table_instance['row']['key'] == 'entry'
 
 
+def test_basic_query_function(db_sample_data):
+    assert db_sample_data.query('key', queries.eq, checktype=int, compare=2).results == ['int-row2']
+
+
+def test_query_none_function(db_sample_data):
+    assert db_sample_data.query_none('key').results == ['difference_line']
+
+
+def test_deep_query_function(db_sample_data):
+    results = db_sample_data.query(('deep', 'key'), queries.eq, checktype=int, compare=10).results
+    results.sort()
+    assert results == ['row0', 'row1', 'row2', 'row3', 'row4']
