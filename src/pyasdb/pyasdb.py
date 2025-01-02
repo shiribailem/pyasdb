@@ -169,6 +169,9 @@ class Entry:
             if self.auto_update:
                 self.db_write()
 
+    def __bool__(self):
+        return self.value.__bool__()
+
 
 class Query:
     """
