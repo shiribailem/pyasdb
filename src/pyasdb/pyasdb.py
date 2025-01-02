@@ -223,7 +223,7 @@ class Query:
         if compare:
             results = filter(
                     lambda key:
-                    self.table[key].recursive_get(field) and
+                    self.table[key].recursive_get(field) is not None and
                     (
                             checktype is None or
                             isinstance(self.table[key].recursive_get(field), checktype)
@@ -233,7 +233,7 @@ class Query:
         else:
             results = filter(
                 lambda key:
-                    self.table[key].recursive_get(field) and
+                    self.table[key].recursive_get(field) is not None and
                     (
                         checktype is None or
                         isinstance(self.table[key].recursive_get(field), checktype)
@@ -260,10 +260,13 @@ class Query:
         :param field: the field being searched
         :param count: specify the maximum number of results to return
         """
-        field = str(field)
+        if type(field) in (str, int, float):
+            field = field
+        elif not isinstance(field, tuple):
+            field = hash(field)
 
         results = filter(
-            lambda key: field not in self.table[key].keys() or self.table[key] is None, self.results)
+            lambda key: self.table[key].recursive_get(field) is None, self.results)
 
         # not 100% certain this works, in theory the filter returns an iterable object and on each iteration
         # it runs comparisons until it finds a match then returns just that entry. Which means this will run
