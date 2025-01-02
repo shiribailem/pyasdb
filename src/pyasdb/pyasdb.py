@@ -96,6 +96,17 @@ class Entry:
         else:
             self.handle.write()
 
+    def recursive_get(self, keys):
+        try:
+            if not isinstance(keys, tuple):
+                return self[keys]
+            if len(keys) == 1:
+                return self[keys[0]]
+            else:
+                return self[keys[0]].recursive_get(keys[1:])
+        except KeyError:
+            return None
+
     def __getitem__(self, key):
         if self.list and not isinstance(key, int):
             raise KeyError("Entry is a list, key must be an integer")
@@ -186,7 +197,7 @@ class Query:
 
         if type(field) in (str, int, float):
             field = field
-        else:
+        elif not isinstance(field, tuple):
             field = hash(field)
 
         # Check if there's an index related to this search, if so use that index
@@ -212,22 +223,22 @@ class Query:
         if compare:
             results = filter(
                     lambda key:
-                    field in self.table[key].keys() and
+                    self.table[key].recursive_get(field) and
                     (
                             checktype is None or
-                            isinstance(self.table[key], checktype)
+                            isinstance(self.table[key].recursive_get(field), checktype)
                     ) and
-                    func(self.table[key][field], compare), self.results)
+                    func(self.table[key].recursive_get(field), compare), self.results)
 
         else:
             results = filter(
                 lambda key:
-                    field in self.table[key].keys() and
+                    self.table[key].recursive_get(field) and
                     (
                         checktype is None or
-                        isinstance(self.table[key], checktype)
+                        isinstance(self.table[key].recursive_get(field), checktype)
                     ) and
-                    func(self.table[key][field]), self.results)
+                    func(self.table[key].recursive_get(field)), self.results)
 
         # not 100% certain this works, in theory the filter returns an iterable object and on each iteration
         # it runs comparisons until it finds a match then returns just that entry. Which means this will run
