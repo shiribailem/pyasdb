@@ -335,6 +335,9 @@ class Table:
         self.__meta = meta
         self.defaults = defaults
 
+        # When set to true the Entries entered by the table will be set to auto_update mode.
+        self.synchronous_entries = False
+
         if not self.__meta:
             self.index = Table(self.parent, self.name + '__index', meta=True)
             self.index_keys = list(self.index.keys())
@@ -421,7 +424,8 @@ class Table:
 
         # Wrap results in an Entry object to support advanced functions
         if not self.__meta:
-            return Entry(self, key, self.parent.raw_get(comp_key), defaults=self.defaults)
+            return Entry(self, key, self.parent.raw_get(comp_key),
+                         defaults=self.defaults, auto_update=self.synchronous_entries)
         return self.parent.raw_get(comp_key)
 
     def __setitem__(self, key, value, sync=False):
