@@ -170,7 +170,10 @@ class Entry:
                 self.db_write()
 
     def __bool__(self):
-        return self.value.__bool__()
+        if self.value:
+            return True
+        else:
+            return False
 
 
 class Query:
