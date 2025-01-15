@@ -3,11 +3,14 @@ import os
 
 
 def decode(key):
+    if isinstance(key, bytes):
+        key = key.decode('utf-8')
+
     try:
-        table, key = key.decode('utf-8').split('.', 1)
+        table, key = key.split('.', 1)
     except ValueError:
         table = '__no_table__'
-        key = key.decode('utf-8')
+        print(f'WARNING: KEY WITHOUT TABLE {key}')
     return table, key
 
 
@@ -18,6 +21,10 @@ class SplitDBM:
         self.flag = flag
         self.debug = debug
 
+        # Ensure directory exists
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+            
         self.tables = {}
 
         for file in os.listdir(self.directory):
