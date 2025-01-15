@@ -27,6 +27,7 @@
 * Added logging module and some debug messages
 * Added indexing
 * (Fix) Uncaught potential OverflowError in dateutil parsing in import_tools
+* Added SplitDBM backend to use as a wrapper around DBM, backend splits all tables into separate files
 
 ### 2024.06.04
 * (FIX) don't crash if dateutil is missing, making it an optional dependency
