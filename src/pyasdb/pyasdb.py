@@ -690,11 +690,19 @@ class DB:
         removed_keys.difference_update(set(self.shelf.keys()))
 
         for key in removed_keys:
-            del backupshelf[key]
+            try:
+                del backupshelf[key]
+            except KeyError:
+                # No need to do anything if for some reason it's not there anyways?
+                pass
 
         backupshelf.sync()
         backupshelf.close()
-        backend.close()
+        try:
+            backend.close()
+        except:
+            # Sometimes the backend is already closed by prior close.
+            pass
 
     def set_table_defaults(self, table, defaults):
         """
@@ -797,4 +805,8 @@ class DB:
         self.sync()
         self.shelf.close()
         if 'close' in dir(self.dbm):
-            self.dbm.close()
+            try:
+                self.dbm.close()
+            except:
+                # Sometimes the close just fails and can't assume all errors
+                pass
