@@ -13,21 +13,18 @@ class PickleDBM:
                 data = file.read()
         except FileNotFoundError:
             data = ""
-            print("File doesn't exist, creating.")
 
         if data:
-            print("Data found, loading")
             self.data = pickle.loads(data)
             if not self.data:
                 self.data = dict()
         else:
-            print("Data not found")
             self.data = dict()
 
     def close(self):
         if not self.closed:
             with open(self.filename, 'wb') as file:
-                print(file.write(pickle.dumps(self.data)))
+                file.write(pickle.dumps(self.data))
             self.closed = True
             self.data = None
 
