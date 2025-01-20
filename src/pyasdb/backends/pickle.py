@@ -22,14 +22,14 @@ class PickleDBM:
             self.data = dict()
 
     def close(self):
+        self.sync()
+        self.closed = True
+        self.data = None
+
+    def sync(self):
         if not self.closed:
             with open(self.filename, 'wb') as file:
                 file.write(pickle.dumps(self.data))
-            self.closed = True
-            self.data = None
-
-    def sync(self):
-        pass
 
     def __getattr__(self, key):
         return getattr(self.data, key)
