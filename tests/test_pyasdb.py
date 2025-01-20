@@ -13,31 +13,25 @@ def db_instance():
 
 @pytest.fixture
 def db_file_instance():
-    db = DB(backend=PickleDBM('test.pickle', debug=True))
+    db = DB(backend=PickleDBM('test.pickle', debug=True), needsshelf=False)
     yield db
     db.close()
     os.remove('test.pickle')
-    #os.remove('test_db.dat')
-    #os.remove('test_db.bak')
-    #os.remove('test_db.dir')
     try:
-        os.remove('test.pickle')
-        #os.remove('backup_db.dat')
-        #os.remove('backup_db.bak')
-        #os.remove('backup_db.dir')
+        os.remove('backup.pickle')
     except FileNotFoundError:
         pass
 
 
 @pytest.fixture
 def db_table_instance():
-    db = DB(backend={})
+    db = DB(backend={}, needsshelf=False)
     yield db['table']
 
 
 @pytest.fixture
 def db_sample_data():
-    db = DB(backend={})
+    db = DB(backend={}, needsshelf=False)
     table = db['table']
     for i in range(5):
         table[f'row{i}'] = {'key': f'value{i}', 'deep': {'key': 10}}
@@ -84,8 +78,8 @@ def test_sync(db_instance):
 
 def test_backup(db_file_instance):
     db_file_instance.raw_write('key', 'value')
-    db_file_instance.backup('backup_db')
-    assert os.path.exists('backup_db.dat')
+    db_file_instance.backup(backend=PickleDBM('backup.pickle'), needsshelf=False)
+    assert os.path.exists('backup.pickle')
 
 
 def test_close(db_instance):

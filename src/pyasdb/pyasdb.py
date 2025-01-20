@@ -573,23 +573,29 @@ class DB:
     """
     A simple offline local pythonic database backed by shelve/pickle
     """
-    def __init__(self, filename=None, flag='c', writeback=False, backend=None):
+    def __init__(self, filename=None, flag='c', writeback=False, backend=None, needsshelf=True):
         """
         Database constructor
         :param filename: Path and filename of the database file to use (ignored if backend provided)
         :param flag: flag passed through to Shelve.open
         :param writeback: Whether to enable writeback mode
         :param backend: (alternative) Accepts open DBM handler or dict object (overrides all other arguments)
+        :param needsshelf: For alternate backends that don't need shelf inbetween. Set False to assign values
+         directly to the backend. Default True.
         """
 
         self.logger = logging.getLogger('pyasdb')
+        self.needsshelf = needsshelf
 
         if backend is None:
             self.dbm = dumbdbm.open(filename, flag)
         else:
             self.dbm = backend
 
-        self.shelf = shelve.Shelf(self.dbm, writeback=False)
+        if needsshelf:
+            self.shelf = shelve.Shelf(self.dbm, writeback=False)
+        else:
+            self.shelf = backend
         self.raw_dict = {}
 
         self.writeback = writeback
@@ -669,7 +675,7 @@ class DB:
                 self.shelf[key] = self.raw_dict[key]
                 del self.raw_dict[key]
 
-    def backup(self, filename=None, flag='n', backend=None, writeback=True):
+    def backup(self, filename=None, flag='n', backend=None, writeback=True, needsshelf=True):
         """
         Creates a backup of the current live database.
         :param filename: Path and filename of the database file to use (ignored if backend provided)
@@ -681,7 +687,10 @@ class DB:
         if backend is None:
             backend = dumbdbm.open(filename, flag)
 
-        backupshelf = shelve.Shelf(backend, writeback=writeback)
+        if needsshelf:
+            backupshelf = shelve.Shelf(backend, writeback=writeback)
+        else:
+            backupshelf = backend
 
         for key in self.shelf.keys():
             backupshelf[key] = self.shelf[key]
@@ -696,8 +705,17 @@ class DB:
                 # No need to do anything if for some reason it's not there anyways?
                 pass
 
-        backupshelf.sync()
-        backupshelf.close()
+        try:
+            backupshelf.sync()
+        except AttributeError:
+            # Not all backends have sync
+            pass
+        try:
+            backupshelf.close()
+        except AttributeError:
+            # Not all backends have close (ie. in memory dict)
+            pass
+
         try:
             backend.close()
         except:
@@ -803,7 +821,10 @@ class DB:
     def close(self):
         self.logger.debug('pyasdb: close()')
         self.sync()
-        self.shelf.close()
+        try:
+            self.shelf.close()
+        except AttributeError:
+            pass
         if 'close' in dir(self.dbm):
             try:
                 self.dbm.close()
