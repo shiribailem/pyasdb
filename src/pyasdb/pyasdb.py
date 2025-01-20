@@ -616,7 +616,7 @@ class DB:
         :return: List of all tables in the database
         """
 
-        keys = list(set(map(lambda key: key.split('.')[0], list(self.shelf))))
+        keys = list(set(map(lambda key: key.split('.')[0], list(self.shelf.keys()))))
         for key in self.raw_dict.keys():
             if key not in keys:
                 keys.append(key)
@@ -674,6 +674,11 @@ class DB:
             for key in keylist:
                 self.shelf[key] = self.raw_dict[key]
                 del self.raw_dict[key]
+            try:
+                self.shelf.sync()
+            except AttributeError:
+                # sync isn't on all backends
+                pass
 
     def backup(self, filename=None, flag='n', backend=None, writeback=True, needsshelf=True):
         """

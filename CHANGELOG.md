@@ -32,6 +32,8 @@
   and no writes occur until close. (Literally the file is just a single pickle)
 * Added needsshelf argument to DB, when the backend doesn't need shelf to serialize before setting values, setting
   this to false will let the database just set the values directly (ie. when using an in-memory dict or PickleDBM)
+* (FIX?) sync now calls the underlying sync function of the backend as well so that filesystem writes can be
+  manually synced.
 
 ### 2024.06.04
 * (FIX) don't crash if dateutil is missing, making it an optional dependency
