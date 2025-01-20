@@ -2,6 +2,7 @@ import os
 import pytest
 from src.pyasdb.pyasdb import DB, Table, Entry
 import src.pyasdb.queries as queries
+from src.pyasdb.backends import PickleDBM
 
 
 @pytest.fixture
@@ -12,16 +13,18 @@ def db_instance():
 
 @pytest.fixture
 def db_file_instance():
-    db = DB('test_db')
+    db = DB(backend=PickleDBM('test.pickle', debug=True))
     yield db
     db.close()
-    os.remove('test_db.dat')
-    os.remove('test_db.bak')
-    os.remove('test_db.dir')
+    os.remove('test.pickle')
+    #os.remove('test_db.dat')
+    #os.remove('test_db.bak')
+    #os.remove('test_db.dir')
     try:
-        os.remove('backup_db.dat')
-        os.remove('backup_db.bak')
-        os.remove('backup_db.dir')
+        os.remove('test.pickle')
+        #os.remove('backup_db.dat')
+        #os.remove('backup_db.bak')
+        #os.remove('backup_db.dir')
     except FileNotFoundError:
         pass
 
