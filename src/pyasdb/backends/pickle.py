@@ -28,6 +28,9 @@ class PickleDBM:
             self.closed = True
             self.data = None
 
+    def sync(self):
+        pass
+
     def __getattr__(self, key):
         return getattr(self.data, key)
 
