@@ -28,6 +28,10 @@
 * Added indexing
 * (Fix) Uncaught potential OverflowError in dateutil parsing in import_tools
 * Added SplitDBM backend to use as a wrapper around DBM, backend splits all tables into separate files
+* Added PickleDBM backend as a super minimal backend that is mostly in-memory. Entire database is loaded into memory
+  and no writes occur until close. (Literally the file is just a single pickle)
+* Added needsshelf argument to DB, when the backend doesn't need shelf to serialize before setting values, setting
+  this to false will let the database just set the values directly (ie. when using an in-memory dict or PickleDBM)
 
 ### 2024.06.04
 * (FIX) don't crash if dateutil is missing, making it an optional dependency
