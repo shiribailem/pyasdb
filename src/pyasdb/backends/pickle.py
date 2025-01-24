@@ -43,3 +43,8 @@ class PickleDBM:
         if self.closed:
             raise ValueError('PickleDBM Backend No Longer Open.')
         self.data[key] = value
+
+    def __delitem__(self, key):
+        if self.closed:
+            raise ValueError('PickleDBM Backend No Longer Open.')
+        del self.data[key]
