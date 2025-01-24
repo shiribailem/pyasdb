@@ -44,7 +44,8 @@ def csv_import(file, db, tablename, index, autoconvert=True, debug=False, hints=
                             row[key] = int(row[key])
                         else:
                             try:
-                                row[key] = float(row[key])
+                                # Parse out common formatting for floats that cause it to fail
+                                row[key] = float(row[key].replace(',', '').replace('"', '').replace("'", ''))
                             except ValueError:
                                 try:
                                     row[key] = literal_eval(row[key])
