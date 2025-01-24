@@ -9,6 +9,15 @@ from copy import deepcopy
 
 
 class Special:
+    """
+    This is a parent primitive for special entry operations.
+
+    This contains no behavior on its own but by inheritance allows entries to recognize
+    special values.
+
+    When encountered in an entry, instead of passing this object directly the entry will
+    return the results of call() with the current entry provided as an argument.
+    """
     def __init__(self):
         pass
 
@@ -17,6 +26,11 @@ class Special:
 
 
 class Join(Special):
+    """
+    Special Join
+
+    This is a One-To-One join function.
+    """
     def __init__(self, table, field=None):
         super().__init__()
         self.table = table
@@ -27,6 +41,59 @@ class Join(Special):
             return self.table[entry[self.field]]
         else:
             return self.table[entry.key]
+
+
+class OneToManyJoin(Special):
+    """
+    Special Simple Join Using Queries
+
+    This is a special One-To-Many join function.
+
+    It is recommended for there to be an index on the queryField.
+
+    Will return a list of entries that match.
+    """
+    def __init__(self, table, queryField, field=None):
+        super().__init__()
+        self.table = table
+        self.field = field
+        self.queryField = queryField
+
+    def call(self, entry):
+        if self.field:
+            return self.table.query(self.queryField, lambda x: x == entry[self.field]).entries()
+        else:
+            return self.table.query(self.queryField, lambda x: x == entry.key).entries()
+
+
+class TranslationJoin(Special):
+    """
+    Special Join Using Translation Tables
+
+    This is a modified One-To-One join function.
+
+    This join expects a specially formatted table in addition to normal join parameters.
+
+    The reference table entries must contain a 'reference_key' value, which will be used
+    to pull the key from the given table.
+
+    This join allows for multiple different keys to all reference the same entry.
+    Great for imported reports where the names might be potentially entered in different
+    formats.
+    """
+    def __init__(self, table, translationtable, field=None):
+        super().__init__()
+        self.table = table
+        self.field = field
+        self.translationtable = translationtable
+
+    def call(self, entry):
+        key = entry[self.field] if self.field else entry.key
+        data = self.translationtable[key]
+        if data:
+            return self.table[data['reference_key']]
+        else:
+            return None
 
 
 class Entry:
@@ -181,6 +248,7 @@ class Query:
     Query Class For Making And Managing Results of Queries.
 
     """
+    # TODO: Rewrite to work with entries rather than keys
     def __init__(self, table, results):
         """
         Query Constructor
@@ -287,6 +355,12 @@ class Query:
             return Query(self.table, new_results)
 
         return Query(self.table, list(results))
+
+    def entries(self):
+        values = []
+        for key in self.results:
+            values.append(self.table[key])
+        return values
 
     def __iter__(self):
         self.index = 0
