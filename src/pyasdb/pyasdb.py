@@ -6,6 +6,7 @@ from contextlib import nullcontext
 import logging
 import typing
 from copy import deepcopy
+from time import sleep
 
 
 class Special:
@@ -712,7 +713,10 @@ class DB:
             return self.__bulkcache
 
         keys = list(self.shelf.keys())
-        for key in self.raw_dict.keys():
+        # Use a cache to limit iteration activity
+        raw_keys = list(self.raw_dict.keys())
+
+        for key in raw_keys:
             if key not in keys:
                 keys.append(key)
         return keys
