@@ -483,7 +483,11 @@ class Table:
                         tmp_index[key][self[line][key]] = {line}
 
         for key in self.index_keys:
-            self.index[key] = tmp_index[key]
+            try:
+                self.index[key] = tmp_index[key]
+            except TypeError:
+                # DEBUG LINE: Keep getting random "int object does not support assignment" errors
+                raise TypeError(f"Index Error {{key}} - {{self.index[key]}}")
 
     def refresh_all_indexes(self):
         if self.index_keys:
