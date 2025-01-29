@@ -146,6 +146,9 @@ class Entry:
 
         self.defaults = defaults
 
+        # Track if changed have occurred
+        self.updated = False
+
     def db_write(self):
         """
         Writes the current object's data into the database handle.
@@ -159,10 +162,15 @@ class Entry:
             None
 
         """
+        # updated should be True if anything was actually changed, so if it's not skip
+        # all the rest of the work.
+        if not self.updated:
+            return
+
         if self.top_level:
             self.handle[self.key] = self.value
         else:
-            self.handle.write()
+            self.handle.db_write()
 
     def recursive_get(self, keys):
         try:
@@ -174,6 +182,15 @@ class Entry:
                 return self[keys[0]].recursive_get(keys[1:])
         except KeyError:
             return None
+
+    # Makes sure the parent object knows it's been updated, possible to reset when syncing
+    def mark_update(self, value=True):
+        self.updated = value
+        if not self.top_level:
+            self.handle.mark_update(value)
+
+    def hash(self):
+        return hash(str(self.value))
 
     def __getitem__(self, key):
         if self.list and not isinstance(key, int):
@@ -200,9 +217,9 @@ class Entry:
 
         if isinstance(value, dict) or isinstance(value, list):
             try:
-                value = Entry(self.handle, key, value, self.auto_update, self.defaults[key])
+                value = Entry(self, key, value, self.auto_update, self.defaults[key])
             except TypeError:
-                value = Entry(self.handle, key, value, self.auto_update)
+                value = Entry(self, key, value, self.auto_update)
 
         return value
 
@@ -218,9 +235,32 @@ class Entry:
             if isinstance(self.defaults[key], Special):
                 raise ValueError("Special Objects Can Not Be Changed Outside of Defaults Definitions")
 
+        sethash = 0
+
+        if not type(value) in (str, int, float):
+            if value != self.value[key]:
+                sethash = self.hash()
+            else:
+                # If it reaches here that means the value was set to the same value
+                # So don't bother with any other work
+                return
+
         self.value[key] = value
-        if self.auto_update or not self.top_level:
+
+        if not self.top_level:
+            self.handle[self.key] = self.value
+
+        if sethash:
+            if sethash != self.hash():
+                self.mark_update(True)
+            else:
+                # If the hash matches, nothing changed, skip ahead, no need to
+                # bother with write operations to update an unchanged value.
+                return
+
+        if self.auto_update:
             self.db_write()
+
 
     def __repr__(self):
         return f"<Entry {self.key}: {self.value}>"
@@ -236,6 +276,7 @@ class Entry:
         if self.auto_update or not self.top_level:
             if self.auto_update:
                 self.db_write()
+                self.mark_update(False)
 
     def __bool__(self):
         if self.value:
@@ -522,8 +563,11 @@ class Table:
         self.parent.logger.debug("pyasdb: Getting key: " + comp_key)
 
         # Wrap results in an Entry object to support advanced functions
+        # Pass deepcopy to Entry to prevent entanglement if backend is using a plain database
+        # ie. PickleDBM or a dict as backend. Otherwise Entry changes might propagate when
+        # undesirable.
         if not self.__meta:
-            return Entry(self, key, self.parent.raw_get(comp_key),
+            return Entry(self, key, deepcopy(self.parent.raw_get(comp_key)),
                          defaults=self.defaults, auto_update=self.synchronous_entries)
         return self.parent.raw_get(comp_key)
 
@@ -535,8 +579,23 @@ class Table:
         """
         key = str(key)
 
+        if not self.__meta:
+            # If the key already exists in the database and we're overwriting it with a
+            # raw dict, then check to see if it matches what's already there to skip
+            # unnecessary write operations.
+            # If it's an Entry then it's probably checked itself already.
+            try:
+                if isinstance(value, dict) and self[key].hash() == hash(str(value)):
+                    return
+            except KeyError:
+                pass
+
         # Entry objects should never be saved to the database
         if isinstance(value, Entry):
+            # Entry will have a marker of whether it was updated. If not, then don't
+            # waste the effort writing it.
+            if not value.updated:
+                return
             value = value.value
 
         if not isinstance(value, dict) and not self.__meta:
