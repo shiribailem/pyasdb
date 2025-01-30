@@ -149,7 +149,7 @@ class Entry:
         # Track if changed have occurred
         self.updated = False
 
-        self.hash_cache = self.hash()
+        self.hash_cache = None
 
     def db_write(self):
         """
@@ -202,6 +202,7 @@ class Entry:
         return hash(str(self.value))
 
     def update(self, value):
+        self.first_hash()
         self.value.update(value)
         self.check_update()
 
@@ -214,6 +215,10 @@ class Entry:
             self.mark_update(True)
             if self.auto_update:
                 self.db_write()
+
+    def first_hash(self):
+        if self.hash_cache is None:
+            self.hash_cache = self.hash()
 
     def __getitem__(self, key):
         if self.list and not isinstance(key, int):
@@ -263,6 +268,8 @@ class Entry:
                 if value == self.value[key]:
                     return
 
+        self.first_hash()
+
         self.value[key] = value
 
         self.check_update()
@@ -271,11 +278,13 @@ class Entry:
         return f"<Entry {self.key}: {self.value}>"
 
     def __getattr__(self, key):
+        self.first_hash()
         result = getattr(self.value, key)
         self.check_update()
         return result
 
     def __delitem__(self, key):
+        self.first_hash()
         del self.value[key]
         self.check_update()
 
