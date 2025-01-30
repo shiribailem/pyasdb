@@ -192,6 +192,14 @@ class Entry:
     def hash(self):
         return hash(str(self.value))
 
+    def update(self, value):
+        sethash = self.hash()
+        self.value.update(value)
+        if sethash != self.hash():
+            self.mark_update(True)
+            if self.auto_update:
+                self.db_write()
+
     def __getitem__(self, key):
         if self.list and not isinstance(key, int):
             raise KeyError("Entry is a list, key must be an integer")
@@ -235,28 +243,29 @@ class Entry:
             if isinstance(self.defaults[key], Special):
                 raise ValueError("Special Objects Can Not Be Changed Outside of Defaults Definitions")
 
-        sethash = 0
+        if key not in list(self.value):
+            self.mark_update(True)
+            self.value[key] = value
+        else:
+            sethash = 0
 
-        if not type(value) in (str, int, float):
-            if value != self.value[key]:
+            if type(value) in (str, int, float):
+                if value == self.value[key]:
+                    return
                 sethash = self.hash()
-            else:
-                # If it reaches here that means the value was set to the same value
-                # So don't bother with any other work
-                return
 
-        self.value[key] = value
+            self.value[key] = value
 
-        if not self.top_level:
-            self.handle[self.key] = self.value
+            if not self.top_level:
+                self.handle[self.key] = self.value
 
-        if sethash:
-            if sethash != self.hash():
-                self.mark_update(True)
-            else:
-                # If the hash matches, nothing changed, skip ahead, no need to
-                # bother with write operations to update an unchanged value.
-                return
+            if sethash:
+                if sethash != self.hash():
+                    self.mark_update(True)
+                else:
+                    # If the hash matches, nothing changed, skip ahead, no need to
+                    # bother with write operations to update an unchanged value.
+                    return
 
         if self.auto_update:
             self.db_write()
