@@ -13,7 +13,7 @@ class PickleDBM:
             with open(filename, 'rb') as file:
                 data = file.read()
         except FileNotFoundError:
-            data = ""
+            data = b""
 
         self.checksum = None
 
@@ -23,8 +23,10 @@ class PickleDBM:
                 self.checksum = file.read()
             if md5(data).hexdigest() != self.checksum:
                 raise ValueError('MD5SUM MISMATCH')
-        else:
+        elif data:
             self.checksum = md5(data).hexdigest()
+        else:
+            self.checksum = b''
 
         if data:
             self.data = pickle.loads(data)
