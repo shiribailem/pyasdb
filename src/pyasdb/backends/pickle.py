@@ -1,5 +1,6 @@
 import os
 import pickle
+from hashlib import md5
 
 
 class PickleDBM:
@@ -13,6 +14,17 @@ class PickleDBM:
                 data = file.read()
         except FileNotFoundError:
             data = ""
+
+        self.checksum = None
+
+        # If filename.md5sum exists load it and check it
+        if os.path.exists(filename + '.md5sum'):
+            with open(filename + '.md5sum', 'r') as file:
+                self.checksum = file.read()
+            if md5(data).hexdigest() != self.checksum:
+                raise ValueError('MD5SUM MISMATCH')
+        else:
+            self.checksum = md5(data).hexdigest()
 
         if data:
             self.data = pickle.loads(data)
@@ -30,15 +42,24 @@ class PickleDBM:
 
     def sync(self):
         if not self.closed and self.updated:
-            with open(self.filename + '_new', 'wb') as file:
-                file.write(pickle.dumps(self.data))
-            # Delete original and swap in new file
-            try:
-                os.remove(self.filename)
-            except FileNotFoundError:
-                # If the file is gone then nothing to worry about
-                pass
-            os.rename(self.filename + '_new', self.filename)
+            data = pickle.dumps(self.data)
+            new_checksum = md5(data).hexdigest()
+            # If the checksum matches then why are we rewriting an identical file?
+            if self.checksum != new_checksum:
+                with open(self.filename + '_new', 'wb') as file:
+                    file.write(data)
+
+                with open(self.filename + '.md5sum', 'w') as file:
+                    file.write(new_checksum)
+                    self.checksum = new_checksum
+
+                # Delete original and swap in new file
+                try:
+                    os.remove(self.filename)
+                except FileNotFoundError:
+                    # If the file is gone then nothing to worry about
+                    pass
+                os.rename(self.filename + '_new', self.filename)
 
     def __getattr__(self, key):
         return getattr(self.data, key)
