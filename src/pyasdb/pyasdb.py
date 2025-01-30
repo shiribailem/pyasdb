@@ -511,20 +511,23 @@ class Table:
         :param keys: which indexes to refresh
         """
         tmp_index = {}
+        key_cache = self.keys()
+        index_keys = self.index_keys
         for key in keys:
-            if key not in self.index_keys:
+            if key not in index_keys:
                 raise KeyError("Index does not exist")
             tmp_index[key] = {}
 
-        for line in self.keys():
+        for line in key_cache:
+            entry = self[line]
             for key in keys:
-                if key in self[line].keys():
-                    if self[line][key] in tmp_index[key]:
-                        tmp_index[key][self[line][key]].update((line,))
+                if key in entry.keys():
+                    if entry[key] in tmp_index[key]:
+                        tmp_index[key][entry[key]].update((line,))
                     else:
-                        tmp_index[key][self[line][key]] = {line}
+                        tmp_index[key][entry[key]] = {line}
 
-        for key in self.index_keys:
+        for key in index_keys:
             try:
                 self.index[key] = tmp_index[key]
             except TypeError:
