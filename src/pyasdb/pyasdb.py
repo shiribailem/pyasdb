@@ -149,6 +149,8 @@ class Entry:
         # Track if changed have occurred
         self.updated = False
 
+        self.hash_cache = self.hash()
+
     def db_write(self):
         """
         Writes the current object's data into the database handle.
@@ -172,6 +174,8 @@ class Entry:
         else:
             self.handle.db_write()
 
+        self.updated = False
+
     def recursive_get(self, keys):
         try:
             if not isinstance(keys, tuple):
@@ -183,19 +187,30 @@ class Entry:
         except KeyError:
             return None
 
-    # Makes sure the parent object knows it's been updated, possible to reset when syncing
-    def mark_update(self, value=True):
+    # Makes sure update status and changes propagate up the chain of nested entries
+    # rehash argument used because the hash will have been updated already by
+    # check update on the first instance.
+    def mark_update(self, value=True, rehash=False):
         self.updated = value
+        if rehash:
+            self.hash_cache = self.hash()
         if not self.top_level:
-            self.handle.mark_update(value)
+            self.handle.value[self.key] = self.value
+            self.handle.mark_update(value, rehash)
 
     def hash(self):
         return hash(str(self.value))
 
     def update(self, value):
-        sethash = self.hash()
         self.value.update(value)
-        if sethash != self.hash():
+        self.check_update()
+
+    def check_update(self):
+        # because the hash is used twice, store it to save one operation
+        new_hash = self.hash()
+        # if the hash doesn't match what's in the cache, then the value has changed
+        if new_hash != self.hash_cache:
+            self.hash_cache = new_hash
             self.mark_update(True)
             if self.auto_update:
                 self.db_write()
@@ -243,49 +258,26 @@ class Entry:
             if isinstance(self.defaults[key], Special):
                 raise ValueError("Special Objects Can Not Be Changed Outside of Defaults Definitions")
 
-        if key not in list(self.value):
-            self.mark_update(True)
-            self.value[key] = value
-        else:
-            sethash = 0
-
+        if (not self.list and key in list(self.value)) or (self.list and key < len(self.value)):
             if type(value) in (str, int, float):
                 if value == self.value[key]:
                     return
-                sethash = self.hash()
 
-            self.value[key] = value
+        self.value[key] = value
 
-            if not self.top_level:
-                self.handle[self.key] = self.value
-
-            if sethash:
-                if sethash != self.hash():
-                    self.mark_update(True)
-                else:
-                    # If the hash matches, nothing changed, skip ahead, no need to
-                    # bother with write operations to update an unchanged value.
-                    return
-
-        if self.auto_update:
-            self.db_write()
-
+        self.check_update()
 
     def __repr__(self):
         return f"<Entry {self.key}: {self.value}>"
 
     def __getattr__(self, key):
         result = getattr(self.value, key)
-        if self.auto_update:
-            self.db_write()
+        self.check_update()
         return result
 
     def __delitem__(self, key):
         del self.value[key]
-        if self.auto_update or not self.top_level:
-            if self.auto_update:
-                self.db_write()
-                self.mark_update(False)
+        self.check_update()
 
     def __bool__(self):
         if self.value:
