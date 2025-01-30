@@ -16,7 +16,10 @@ def db_file_instance():
     db = DB(backend=PickleDBM('test.pickle', debug=True), needsshelf=False)
     yield db
     db.close()
-    os.remove('test.pickle')
+    try:
+        os.remove('test.pickle')
+    except FileNotFoundError:
+        pass
     try:
         os.remove('backup.pickle')
     except FileNotFoundError:
