@@ -21,7 +21,15 @@ def db_file_instance():
     except FileNotFoundError:
         pass
     try:
+        os.remove('test.pickle.md5sum')
+    except FileNotFoundError:
+        pass
+    try:
         os.remove('backup.pickle')
+    except FileNotFoundError:
+        pass
+    try:
+        os.remove('backup.pickle.md5sum')
     except FileNotFoundError:
         pass
 
