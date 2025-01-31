@@ -541,7 +541,9 @@ class Table:
                 self.index[key] = tmp_index[key]
             except TypeError:
                 # DEBUG LINE: Keep getting random "int object does not support assignment" errors
-                raise TypeError(f"Index Error {{key}} - {{self.index[key]}}")
+                message = f"Index Error {{key}} - {{self.index[key]}}"
+                print(message)
+                raise TypeError(message)
 
     def refresh_all_indexes(self):
         if self.index_keys:
