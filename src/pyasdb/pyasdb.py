@@ -94,7 +94,10 @@ class TranslationJoin(Special):
         if data:
             return self.table[data['reference_key']]
         else:
-            return None
+            try:
+                return self.table[key]
+            except KeyError:
+                return None
 
 
 class Entry:
