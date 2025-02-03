@@ -350,7 +350,7 @@ class Query:
             else:
                 return Query(self.table, results)
 
-        if compare:
+        if not compare is None:
             results = filter(
                     lambda key:
                     self.table[key].recursive_get(field) is not None and
