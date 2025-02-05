@@ -339,7 +339,7 @@ class Query:
                     results.update(self.table.index[field][key])
                 elif not compare and func(key):
                     results.update(self.table.index[field][key])
-                sleep(0)
+                #sleep(0)
 
             # This merges the new search with existing results, returning only entries that are in both
             results.intersection_update(self.results)
@@ -380,7 +380,7 @@ class Query:
                     new_results.append(next(results))
                 except StopIteration:
                     break
-                sleep(0)
+                #sleep(0)
             return Query(self.table, new_results)
 
         return Query(self.table, list(results))
@@ -409,7 +409,7 @@ class Query:
                     new_results.append(next(results))
                 except StopIteration:
                     break
-                sleep(0)
+                #sleep(0)
             return Query(self.table, new_results)
 
         return Query(self.table, list(results))
@@ -418,7 +418,7 @@ class Query:
         values = []
         for key in self.results:
             values.append(self.table[key])
-            sleep(0)
+            #sleep(0)
         return values
 
     def __iter__(self):
@@ -506,7 +506,7 @@ class Table:
                 self.index[key] = {}
                 self.index_keys.append(key)
                 refresh_keys.update((key,))
-            sleep(0)
+            #sleep(0)
 
         if refresh_keys:
             self.refresh_indexes(refresh_keys)
@@ -534,7 +534,7 @@ class Table:
             if key not in index_keys:
                 raise KeyError("Index does not exist")
             tmp_index[key] = {}
-            sleep(0)
+            #sleep(0)
 
         for line in key_cache:
             entry = self[line]
@@ -544,7 +544,7 @@ class Table:
                         tmp_index[key][entry[key]].update((line,))
                     else:
                         tmp_index[key][entry[key]] = {line}
-                sleep(0)
+                #sleep(0)
 
         for key in index_keys:
             try:
@@ -554,7 +554,7 @@ class Table:
                 message = f"Index Error {{key}} - {{self.index[key]}}"
                 print(message)
                 raise TypeError(message)
-            sleep(0)
+            #sleep(0)
 
     def refresh_all_indexes(self):
         if self.index_keys:
@@ -808,7 +808,7 @@ class DB:
         for key in raw_keys:
             if key not in keys:
                 keys.append(key)
-            sleep(0)
+            #sleep(0)
         return keys
 
     def get_bulk_lock(self):
@@ -842,7 +842,7 @@ class DB:
             for key in keylist:
                 self.shelf[key] = self.raw_dict[key]
                 del self.raw_dict[key]
-                sleep(0)
+                #sleep(0)
             try:
                 self.shelf.sync()
             except AttributeError:
@@ -868,7 +868,7 @@ class DB:
 
         for key in self.shelf.keys():
             backupshelf[key] = self.shelf[key]
-            sleep(0)
+            #sleep(0)
 
         removed_keys = set(backupshelf.keys())
         removed_keys.difference_update(set(self.shelf.keys()))
@@ -879,7 +879,7 @@ class DB:
             except KeyError:
                 # No need to do anything if for some reason it's not there anyways?
                 pass
-            sleep(0)
+            #sleep(0)
 
         try:
             backupshelf.sync()
