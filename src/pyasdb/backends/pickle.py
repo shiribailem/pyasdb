@@ -53,7 +53,7 @@ class PickleDBM:
             with open(self.filename + '.journal', 'ab') as file:
                 for line in self.journal:
                     data = pickle.dumps(line)
-                    size = len(data).to_bytes(4)
+                    size = len(data).to_bytes(4, byteorder='big')
                     checksum = md5(size+data).digest()
                     file.write(checksum + size + data)
                 self.journal = []
