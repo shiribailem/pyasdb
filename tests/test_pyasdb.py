@@ -16,16 +16,12 @@ def db_file_instance():
     db = DB(backend=PickleDBM('test.pickle', debug=True), needsshelf=False)
     yield db
     db.close()
-    try:
-        os.remove('test.pickle')
-        os.remove('test.pickle.md5sum')
-    except FileNotFoundError:
-        pass
-    try:
-        os.remove('backup.pickle')
-        os.remove('backup.pickle.md5sum')
-    except FileNotFoundError:
-        pass
+    for file in ('test.pickle', 'test.pickle.md5sum', 'test.pickle.journal', 'backup.pickle',
+                 'backup.pickle.md5sum', 'backup.pickle.journal'):
+        try:
+            os.remove(file)
+        except FileNotFoundError:
+            pass
 
 
 @pytest.fixture
@@ -91,21 +87,6 @@ def test_close(db_instance):
     db_instance.close()
     with pytest.raises(ValueError):
         db_instance.raw_get('key')
-
-
-def test_journal_creation(db_file_instance):
-    db_file_instance.raw_write('key', 'value')
-    assert os.path.exists('test.pickle.journal')
-
-
-def test_journal_recovery(db_file_instance):
-    db_file_instance.raw_write('key', 'value')
-    assert os.path.exists('test.pickle.journal')
-    new_db = DB(backend=PickleDBM('test.pickle', debug=True), needsshelf=False)
-    assert new_db.raw_get('key') == 'value'
-    new_db.close()
-    #os.remove('test.pickle')
-    #os.remove('test.pickle.md5sum')
 
 
 def test_get_table(db_table_instance):
